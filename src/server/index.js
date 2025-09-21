@@ -17,12 +17,17 @@ import { hashFile } from '../core/utils-server'
 import { getDB } from './db'
 import { Storage } from './Storage'
 import { initCollections } from './collections'
+import { getServerConfig } from './config.js'
 
-const rootDir = path.join(__dirname, '../')
-const worldDir = path.join(rootDir, process.env.WORLD)
-const assetsDir = path.join(worldDir, '/assets')
-const collectionsDir = path.join(worldDir, '/collections')
-const port = process.env.PORT
+const config = getServerConfig()
+const {
+  rootDir,
+  world: { dir: worldDir, assetsDir, collectionsDir },
+  server: { port },
+  public: publicConfig,
+  auth,
+  commitHash,
+} = config
 
 // create world folders if needed
 await fs.ensureDir(worldDir)
@@ -44,7 +49,7 @@ const storage = new Storage(path.join(worldDir, '/storage.json'))
 
 // create world
 const world = createServerWorld()
-world.assetsUrl = process.env.PUBLIC_ASSETS_URL
+world.assetsUrl = publicConfig.assetsUrl
 world.collections.deserialize(collections)
 world.init({ db, storage, assetsDir })
 
@@ -56,7 +61,7 @@ fastify.get('/', async (req, reply) => {
   const title = world.settings.title || 'World'
   const desc = world.settings.desc || ''
   const image = world.resolveURL(world.settings.image?.url) || ''
-  const url = process.env.PUBLIC_ASSETS_URL
+  const url = publicConfig.assetsUrl
   const filePath = path.join(__dirname, 'public', 'index.html')
   let html = fs.readFileSync(filePath, 'utf-8')
   html = html.replaceAll('{url}', url)
@@ -93,13 +98,7 @@ fastify.register(multipart, {
 fastify.register(ws)
 fastify.register(worldNetwork)
 
-const publicEnvs = {}
-for (const key in process.env) {
-  if (key.startsWith('PUBLIC_')) {
-    const value = process.env[key]
-    publicEnvs[key] = value
-  }
-}
+const publicEnvs = publicConfig.env
 const envsCode = `
   if (!globalThis.env) globalThis.env = {}
   globalThis.env = ${JSON.stringify(publicEnvs)}
@@ -160,9 +159,9 @@ fastify.get('/status', async (request, reply) => {
   try {
     const status = {
       uptime: Math.round(world.time),
-      protected: process.env.ADMIN_CODE !== undefined ? true : false,
+      protected: auth.hasAdminCode,
       connectedUsers: [],
-      commitHash: process.env.COMMIT_HASH,
+      commitHash,
     }
     for (const socket of world.network.sockets.values()) {
       status.connectedUsers.push({

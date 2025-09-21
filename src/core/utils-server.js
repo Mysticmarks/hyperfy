@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
+import { getServerConfig } from '../server/config.js'
 
 /**
  *
@@ -20,7 +21,9 @@ export async function hashFile(file) {
  * JSON Web Tokens
  */
 
-const jwtSecret = process.env.JWT_SECRET
+const {
+  auth: { jwtSecret },
+} = getServerConfig()
 
 export function createJWT(data) {
   return new Promise((resolve, reject) => {
