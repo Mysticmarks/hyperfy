@@ -2,6 +2,7 @@ import { AccessToken, TrackSource } from 'livekit-server-sdk'
 
 import { System } from './System'
 import { uuid } from '../utils'
+import { getServerConfig } from '../../server/config.js'
 
 const levels = ['disabled', 'spatial', 'global']
 const levelPriorities = {
@@ -10,13 +11,15 @@ const levelPriorities = {
   global: 3,
 }
 
+const { livekit: livekitConfig } = getServerConfig()
+
 export class ServerLiveKit extends System {
   constructor(world) {
     super(world)
     this.roomId = uuid()
-    this.wsUrl = process.env.LIVEKIT_WS_URL
-    this.apiKey = process.env.LIVEKIT_API_KEY
-    this.apiSecret = process.env.LIVEKIT_API_SECRET
+    this.wsUrl = livekitConfig.wsUrl
+    this.apiKey = livekitConfig.apiKey
+    this.apiSecret = livekitConfig.apiSecret
     this.enabled = this.wsUrl && this.apiKey && this.apiSecret
     this.modifiers = {} // [playerId] => Set({ level })
     this.levels = {} // [playerId] => level (disabled, spatial, global)

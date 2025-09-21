@@ -7,8 +7,12 @@ import { createJWT, readJWT } from '../utils-server'
 import { cloneDeep, isNumber } from 'lodash-es'
 import * as THREE from '../extras/three'
 import { Ranks } from '../extras/ranks'
+import { getServerConfig } from '../../server/config.js'
 
-const SAVE_INTERVAL = parseInt(process.env.SAVE_INTERVAL || '60') // seconds
+const serverConfig = getServerConfig()
+const SAVE_INTERVAL = serverConfig.server.saveInterval // seconds
+const PUBLIC_CONFIG = serverConfig.public
+const AUTH_CONFIG = serverConfig.auth
 const PING_RATE = 1 // seconds
 const defaultSpawn = '{ "position": [0, 0, 0], "quaternion": [0, 0, 0, 1] }'
 
@@ -61,7 +65,7 @@ export class ServerNetwork extends System {
     try {
       const settings = JSON.parse(settingsRow?.value || '{}')
       this.world.settings.deserialize(settings)
-      this.world.settings.setHasAdminCode(!!process.env.ADMIN_CODE)
+      this.world.settings.setHasAdminCode(AUTH_CONFIG.hasAdminCode)
     } catch (err) {
       console.error(err)
     }
@@ -281,9 +285,9 @@ export class ServerNetwork extends System {
       socket.send('snapshot', {
         id: socket.id,
         serverTime: performance.now(),
-        assetsUrl: process.env.PUBLIC_ASSETS_URL,
-        apiUrl: process.env.PUBLIC_API_URL,
-        maxUploadSize: process.env.PUBLIC_MAX_UPLOAD_SIZE,
+        assetsUrl: PUBLIC_CONFIG.assetsUrl,
+        apiUrl: PUBLIC_CONFIG.apiUrl,
+        maxUploadSize: PUBLIC_CONFIG.maxUploadSize,
         collections: this.world.collections.serialize(),
         settings: this.world.settings.serialize(),
         chat: this.world.chat.serialize(),
@@ -291,7 +295,7 @@ export class ServerNetwork extends System {
         entities: this.world.entities.serialize(),
         livekit,
         authToken,
-        hasAdminCode: !!process.env.ADMIN_CODE,
+        hasAdminCode: AUTH_CONFIG.hasAdminCode,
       })
 
       this.sockets.set(socket.id, socket)
@@ -317,7 +321,7 @@ export class ServerNetwork extends System {
     // become admin command
     if (cmd === 'admin') {
       const code = arg1
-      if (process.env.ADMIN_CODE && process.env.ADMIN_CODE === code) {
+      if (AUTH_CONFIG.adminCode && AUTH_CONFIG.adminCode === code) {
         const id = player.data.id
         const userId = player.data.userId
         const granted = !player.isAdmin()
