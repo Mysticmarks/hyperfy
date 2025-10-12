@@ -40,6 +40,17 @@ export class Apps extends System {
     const self = this
     const world = this.world
     const allowLoaders = ['avatar', 'model']
+    const ensureChallenges = () => {
+      if (!world.challenges) {
+        throw new Error('Challenge system is not available in this world')
+      }
+      return world.challenges
+    }
+    const requireServer = () => {
+      if (world.network && !world.network.isServer) {
+        throw new Error('Challenge door operations are only available on the server')
+      }
+    }
     this.worldGetters = {
       networkId(entity) {
         return world.network.id
@@ -214,6 +225,50 @@ export class Apps extends System {
             reject(err)
           }
         })
+      },
+      createChallengeDoor(entity, options) {
+        requireServer()
+        return ensureChallenges().createDoor(options)
+      },
+      updateChallengeDoor(entity, id, changes) {
+        requireServer()
+        return ensureChallenges().updateDoor(id, changes)
+      },
+      removeChallengeDoor(entity, id) {
+        requireServer()
+        return ensureChallenges().removeDoor(id)
+      },
+      listChallengeDoors() {
+        requireServer()
+        return ensureChallenges().listDoors()
+      },
+      previewChallengeDoor(entity, id, overrides) {
+        requireServer()
+        return ensureChallenges().previewChallenge(id, overrides)
+      },
+      startChallengeDoor(entity, id, options) {
+        requireServer()
+        return ensureChallenges().startChallenge(id, options)
+      },
+      completeChallengeDoor(entity, id, result) {
+        requireServer()
+        return ensureChallenges().completeChallenge(id, result)
+      },
+      failChallengeDoor(entity, id, data) {
+        requireServer()
+        return ensureChallenges().failChallenge(id, data)
+      },
+      getActiveChallenge(entity, id) {
+        requireServer()
+        return ensureChallenges().getChallenge(id)
+      },
+      listActiveChallenges() {
+        requireServer()
+        return ensureChallenges().listActiveChallenges()
+      },
+      getChallengeHistory(entity, limit) {
+        requireServer()
+        return ensureChallenges().getHistory(limit)
       },
       getQueryParam(entity, key) {
         if (!isBrowser) {
