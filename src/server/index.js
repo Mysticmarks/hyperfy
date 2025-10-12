@@ -4,7 +4,6 @@ import './bootstrap'
 
 import fs from 'fs-extra'
 import path from 'path'
-import { pipeline } from 'stream/promises'
 import Fastify from 'fastify'
 import ws from '@fastify/websocket'
 import cors from '@fastify/cors'
@@ -19,11 +18,18 @@ import { Storage } from './Storage'
 import { initCollections } from './collections'
 import { getServerConfig } from './config.js'
 
+function cloneCollections(data) {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(data)
+  }
+  return JSON.parse(JSON.stringify(data))
+}
+
 const config = getServerConfig()
 const {
   rootDir,
   world: { dir: worldDir, assetsDir, collectionsDir },
-  server: { port },
+  server: { port, zones: configuredZones, defaultZoneId },
   public: publicConfig,
   auth,
   commitHash,
@@ -38,26 +44,83 @@ await fs.ensureDir(collectionsDir)
 await fs.copy(path.join(rootDir, 'src/world/assets'), path.join(assetsDir))
 await fs.copy(path.join(rootDir, 'src/world/collections'), path.join(collectionsDir))
 
-// init collections
-const collections = await initCollections({ collectionsDir, assetsDir })
+// init collections shared by all zones
+const baseCollections = await initCollections({ collectionsDir, assetsDir })
 
-// init db
-const db = await getDB(worldDir)
+// boot each configured zone with isolated persistence but shared assets
+const zones = new Map()
+for (const zoneConfig of configuredZones) {
+  await fs.ensureDir(zoneConfig.dataDir)
+  const db = await getDB(zoneConfig.dataDir, { assetsRootDir: worldDir })
+  const storage = new Storage(path.join(zoneConfig.dataDir, '/storage.json'))
+  const world = createServerWorld()
+  world.zoneId = zoneConfig.id
+  world.zoneLabel = zoneConfig.label
+  if (zoneConfig.tickRate) {
+    world.networkRate = 1 / zoneConfig.tickRate
+  }
+  world.assetsUrl = publicConfig.assetsUrl
+  world.collections.deserialize(cloneCollections(baseCollections))
+  world.init({ db, storage, assetsDir })
+  zones.set(zoneConfig.id, {
+    world,
+    db,
+    storage,
+    config: zoneConfig,
+  })
+}
 
-// init storage
-const storage = new Storage(path.join(worldDir, '/storage.json'))
+if (!zones.size) {
+  throw new Error('No zones could be initialised')
+}
 
-// create world
-const world = createServerWorld()
-world.assetsUrl = publicConfig.assetsUrl
-world.collections.deserialize(collections)
-world.init({ db, storage, assetsDir })
+const defaultZone = zones.get(defaultZoneId)
+if (!defaultZone) {
+  throw new Error(`Default zone "${defaultZoneId}" is not available`)
+}
+
+function resolveZone(zoneId) {
+  if (zoneId && zones.has(zoneId)) {
+    return zones.get(zoneId)
+  }
+  return defaultZone
+}
+
+function getDefaultWorld() {
+  return resolveZone(defaultZoneId).world
+}
+
+function getZoneSnapshots() {
+  const snapshots = []
+  for (const [zoneId, zone] of zones) {
+    const world = zone.world
+    const sockets = []
+    for (const socket of world.network.sockets.values()) {
+      sockets.push({
+        id: socket.player?.data?.userId ?? null,
+        name: socket.player?.data?.name ?? null,
+        position: socket.player?.position?.value?.toArray?.() ?? null,
+      })
+    }
+    snapshots.push({
+      id: zoneId,
+      label: zone.config.label,
+      tickRate: zone.config.tickRate,
+      networkRate: world.networkRate,
+      frame: world.frame,
+      time: world.time,
+      sockets,
+    })
+  }
+  return snapshots
+}
 
 const fastify = Fastify({ logger: { level: 'error' } })
 
 fastify.register(cors)
 fastify.register(compress)
 fastify.get('/', async (req, reply) => {
+  const world = getDefaultWorld()
   const title = world.settings.title || 'World'
   const desc = world.settings.desc || ''
   const image = world.resolveURL(world.settings.image?.url) || ''
@@ -138,11 +201,18 @@ fastify.get('/api/upload-check', async (req, reply) => {
 
 fastify.get('/health', async (request, reply) => {
   try {
-    // Basic health check
+    const snapshots = getZoneSnapshots()
     const health = {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
+      zones: snapshots.map(snapshot => ({
+        id: snapshot.id,
+        label: snapshot.label,
+        players: snapshot.sockets.length,
+        frame: snapshot.frame,
+        time: snapshot.time,
+      })),
     }
 
     return reply.code(200).send(health)
@@ -155,20 +225,82 @@ fastify.get('/health', async (request, reply) => {
   }
 })
 
+fastify.get('/zones', async (request, reply) => {
+  try {
+    const snapshots = getZoneSnapshots()
+    return reply.code(200).send({
+      defaultZoneId,
+      count: snapshots.length,
+      zones: snapshots.map(snapshot => ({
+        id: snapshot.id,
+        label: snapshot.label,
+        tickRate: snapshot.tickRate,
+        networkRate: snapshot.networkRate,
+        players: snapshot.sockets.length,
+        frame: snapshot.frame,
+        time: snapshot.time,
+      })),
+    })
+  } catch (error) {
+    console.error('Zones endpoint failed:', error)
+    return reply.code(503).send({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+    })
+  }
+})
+
+fastify.get('/metrics', async (request, reply) => {
+  try {
+    const metrics = []
+    for (const [zoneId, zone] of zones) {
+      const stats = await zone.world.monitor.getStats()
+      metrics.push({
+        id: zoneId,
+        label: zone.config.label,
+        players: zone.world.network.sockets.size,
+        frame: zone.world.frame,
+        time: zone.world.time,
+        networkRate: zone.world.networkRate,
+        cpu: stats.currentCPU,
+        maxCPU: stats.maxCPU,
+        memory: stats.currentMemory,
+        maxMemory: stats.maxMemory,
+      })
+    }
+
+    return reply.code(200).send({
+      timestamp: new Date().toISOString(),
+      zones: metrics,
+    })
+  } catch (error) {
+    console.error('Metrics endpoint failed:', error)
+    return reply.code(503).send({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+    })
+  }
+})
+
 fastify.get('/status', async (request, reply) => {
   try {
+    const snapshots = getZoneSnapshots()
+    const defaultSnapshot = snapshots.find(snapshot => snapshot.id === defaultZoneId)
     const status = {
-      uptime: Math.round(world.time),
+      uptime: Math.round(getDefaultWorld().time),
       protected: auth.hasAdminCode,
-      connectedUsers: [],
+      connectedUsers: defaultSnapshot ? defaultSnapshot.sockets : [],
       commitHash,
-    }
-    for (const socket of world.network.sockets.values()) {
-      status.connectedUsers.push({
-        id: socket.player.data.userId,
-        position: socket.player.position.value.toArray(),
-        name: socket.player.data.name,
-      })
+      zones: snapshots.map(snapshot => ({
+        id: snapshot.id,
+        label: snapshot.label,
+        tickRate: snapshot.tickRate,
+        networkRate: snapshot.networkRate,
+        frame: snapshot.frame,
+        time: snapshot.time,
+        players: snapshot.sockets.length,
+        connectedUsers: snapshot.sockets,
+      })),
     }
 
     return reply.code(200).send(status)
@@ -196,7 +328,19 @@ try {
 
 async function worldNetwork(fastify) {
   fastify.get('/ws', { websocket: true }, (ws, req) => {
-    world.network.onConnection(ws, req.query)
+    const baseQuery = { ...(req.query ?? {}) }
+    const requestedZone = Array.isArray(baseQuery.zone)
+      ? baseQuery.zone[0]
+      : typeof baseQuery.zone === 'string'
+        ? baseQuery.zone
+        : undefined
+    const zone = resolveZone(requestedZone)
+    if (!zone) {
+      ws.close(1008, 'Zone unavailable')
+      return
+    }
+    baseQuery.zone = zone.config.id
+    zone.world.network.onConnection(ws, baseQuery)
   })
 }
 

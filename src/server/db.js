@@ -7,20 +7,26 @@ import { importApp } from '../core/extras/appTools'
 import { defaults } from 'lodash-es'
 import { Ranks } from '../core/extras/ranks'
 
-let db
+const connections = new Map()
 
-export async function getDB(worldDir) {
-  const filename = path.join(worldDir, '/db.sqlite')
-  if (!db) {
-    db = Knex({
-      client: 'better-sqlite3',
-      connection: {
-        filename,
-      },
-      useNullAsDefault: true,
-    })
-    await migrate(db, worldDir)
+export async function getDB(worldDir, options = {}) {
+  const resolvedDir = path.resolve(worldDir)
+  const cached = connections.get(resolvedDir)
+  if (cached) {
+    return cached
   }
+
+  const filename = path.join(resolvedDir, '/db.sqlite')
+  const assetsRootDir = options.assetsRootDir ? path.resolve(options.assetsRootDir) : resolvedDir
+  const db = Knex({
+    client: 'better-sqlite3',
+    connection: {
+      filename,
+    },
+    useNullAsDefault: true,
+  })
+  await migrate(db, assetsRootDir)
+  connections.set(resolvedDir, db)
   return db
 }
 

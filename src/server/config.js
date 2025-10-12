@@ -93,6 +93,86 @@ function buildPublicEnv(overrides) {
   return Object.freeze(merged)
 }
 
+const ZONE_ID_PATTERN = /^[a-z0-9][a-z0-9-_]*$/i
+
+function normaliseZoneId(value, index) {
+  if (typeof value !== 'string') {
+    throw new Error(`WORLD_ZONES[${index}].id must be a string`)
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    throw new Error(`WORLD_ZONES[${index}].id cannot be empty`)
+  }
+  if (!ZONE_ID_PATTERN.test(trimmed)) {
+    throw new Error(
+      `WORLD_ZONES[${index}].id must match ${ZONE_ID_PATTERN.toString()} (alphanumeric, hyphen, underscore)`
+    )
+  }
+  return trimmed
+}
+
+function parseZoneConfig(rawValue, worldDir) {
+  if (!rawValue) {
+    return [
+      Object.freeze({
+        id: 'primary',
+        label: 'Primary Zone',
+        dataDir: worldDir,
+        tickRate: null,
+      }),
+    ]
+  }
+
+  let parsed
+  try {
+    parsed = JSON.parse(rawValue)
+  } catch (err) {
+    parsed = rawValue
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean)
+      .map(id => ({ id }))
+  }
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('WORLD_ZONES must be a JSON array or comma separated list with at least one entry')
+  }
+
+  const zones = []
+  for (let index = 0; index < parsed.length; index++) {
+    const descriptor = parsed[index]
+    const zone = typeof descriptor === 'string' ? { id: descriptor } : descriptor
+    if (!zone || typeof zone !== 'object') {
+      throw new Error(`WORLD_ZONES[${index}] must be a string or object`)
+    }
+
+    const id = normaliseZoneId(zone.id ?? zone.slug ?? zone.name, index)
+    const label = zone.label ? String(zone.label).trim() : id
+    const relativeDataDir = ensureRelativePath(zone.dataDir ?? path.join('zones', id), `WORLD_ZONES[${index}].dataDir`)
+    const dataDir = path.join(worldDir, relativeDataDir)
+
+    let tickRate = null
+    if (zone.tickRate !== undefined && zone.tickRate !== null && zone.tickRate !== '') {
+      const numeric = Number(zone.tickRate)
+      if (!Number.isFinite(numeric) || numeric <= 0) {
+        throw new Error(`WORLD_ZONES[${index}].tickRate must be a positive number if provided`)
+      }
+      tickRate = numeric
+    }
+
+    zones.push(
+      Object.freeze({
+        id,
+        label,
+        dataDir,
+        tickRate,
+      })
+    )
+  }
+
+  return zones
+}
+
 function buildServerConfig(options = {}) {
   const rootDir = options.rootDir ? path.resolve(options.rootDir) : defaultRootDir
 
@@ -100,6 +180,8 @@ function buildServerConfig(options = {}) {
   const worldDir = path.join(rootDir, worldName)
   const assetsDir = path.join(worldDir, 'assets')
   const collectionsDir = path.join(worldDir, 'collections')
+
+  const zoneConfig = parseZoneConfig(readEnv('WORLD_ZONES', { allowEmpty: true }), worldDir)
 
   const port = parseInteger(readEnv('PORT', { defaultValue: '3000' }), 'PORT', {
     min: 1,
@@ -160,6 +242,8 @@ function buildServerConfig(options = {}) {
     server: Object.freeze({
       port,
       saveInterval,
+      zones: Object.freeze(zoneConfig),
+      defaultZoneId: zoneConfig[0].id,
     }),
     auth: Object.freeze({
       jwtSecret,
