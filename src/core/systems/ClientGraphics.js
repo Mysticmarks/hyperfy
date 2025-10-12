@@ -54,12 +54,16 @@ export class ClientGraphics extends System {
     this.height = this.viewport.offsetHeight
     this.aspect = this.width / this.height
     this.renderer = getRenderer()
+    this.renderer.physicallyCorrectLights = true
+    this.renderer.useLegacyLights = false
     this.renderer.setSize(this.width, this.height)
     this.renderer.setClearColor(0xffffff, 0)
-    this.renderer.setPixelRatio(this.world.prefs.dpr)
+    const devicePixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    const targetPixelRatio = Math.min(2, Math.max(this.world.prefs.dpr, devicePixelRatio))
+    this.renderer.setPixelRatio(targetPixelRatio)
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    this.renderer.toneMapping = THREE.NoToneMapping
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
     this.renderer.toneMappingExposure = 1
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.xr.enabled = true
@@ -169,7 +173,9 @@ export class ClientGraphics extends System {
   onPrefsChange = changes => {
     // pixel ratio
     if (changes.dpr) {
-      this.renderer.setPixelRatio(changes.dpr.value)
+      const devicePixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+      const targetPixelRatio = Math.min(2, Math.max(changes.dpr.value, devicePixelRatio))
+      this.renderer.setPixelRatio(targetPixelRatio)
       this.resize(this.width, this.height)
     }
     // postprocessing

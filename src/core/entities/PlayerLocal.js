@@ -21,6 +21,10 @@ const PAN_LOOK_SPEED = 0.4
 const ZOOM_SPEED = 2
 const MIN_ZOOM = 0
 const MAX_ZOOM = 8
+const MIN_THIRD_PERSON_ZOOM = 0.35
+const DEFAULT_THIRD_PERSON_ZOOM = 1.75
+const FIRST_PERSON_THRESHOLD = 0.2
+const FIRST_PERSON_HEAD_OFFSET = new THREE.Vector3(0, 0.02, -0.05)
 const STICK_OUTER_RADIUS = 50
 const STICK_INNER_RADIUS = 25
 const DEFAULT_CAM_HEIGHT = 1.2
@@ -92,7 +96,8 @@ export class PlayerLocal extends Entity {
     this.moveDir = new THREE.Vector3()
     this.moving = false
 
-    this.firstPerson = false
+    this.firstPerson = true
+    this.thirdPersonZoom = DEFAULT_THIRD_PERSON_ZOOM
 
     this.lastJumpAt = 0
     this.flying = false
@@ -163,8 +168,7 @@ export class PlayerLocal extends Entity {
     this.cam.rotation = new THREE.Euler(0, 0, 0, 'YXZ')
     bindRotations(this.cam.quaternion, this.cam.rotation)
     this.cam.quaternion.copy(this.base.quaternion)
-    this.cam.rotation.x += -15 * DEG2RAD
-    this.cam.zoom = 1.5
+    this.cam.zoom = MIN_ZOOM
 
     if (this.world.loader?.preloader) {
       await this.world.loader.preloader
@@ -197,6 +201,7 @@ export class PlayerLocal extends Entity {
         if (!this.bubble.active) {
           this.nametag.active = true
         }
+        this.avatar.visible = !this.firstPerson
         this.avatarUrl = avatarUrl
         this.camHeight = this.avatar.height * 0.9
       })
@@ -306,6 +311,11 @@ export class PlayerLocal extends Entity {
     this.control.camera.position.copy(this.cam.position)
     this.control.camera.quaternion.copy(this.cam.quaternion)
     this.control.camera.zoom = this.cam.zoom
+    if (this.control.keyV) {
+      this.control.keyV.onPress = () => {
+        this.toggleViewMode()
+      }
+    }
     // this.control.setActions([{ type: 'space', label: 'Jump / Double-Jump' }])
     // this.control.setActions([{ type: 'escape', label: 'Menu' }])
   }
@@ -323,6 +333,15 @@ export class PlayerLocal extends Entity {
       // ...
     }
     this.lastJumpAt = -999
+  }
+
+  toggleViewMode() {
+    if (this.firstPerson) {
+      this.cam.zoom = clamp(this.thirdPersonZoom, MIN_THIRD_PERSON_ZOOM, MAX_ZOOM)
+    } else {
+      this.thirdPersonZoom = clamp(this.cam.zoom, MIN_THIRD_PERSON_ZOOM, MAX_ZOOM)
+      this.cam.zoom = MIN_ZOOM
+    }
   }
 
   getAnchorMatrix() {
@@ -756,19 +775,23 @@ export class PlayerLocal extends Entity {
       this.cam.zoom = 0
       this.xrActive = true
     } else if (!isXR && this.xrActive) {
-      this.cam.zoom = 1
+      this.cam.zoom = DEFAULT_THIRD_PERSON_ZOOM
       this.xrActive = false
     }
 
     // transition in and out of first person
-    if (this.cam.zoom < 1 && !this.firstPerson) {
-      this.cam.zoom = 0
+    const shouldBeFirstPerson = this.cam.zoom <= FIRST_PERSON_THRESHOLD
+    if (shouldBeFirstPerson && !this.firstPerson) {
+      this.cam.zoom = MIN_ZOOM
       this.firstPerson = true
-      this.avatar.visible = false
-    } else if (this.cam.zoom > 0 && this.firstPerson) {
-      this.cam.zoom = 1
+      if (this.avatar) this.avatar.visible = false
+    } else if (!shouldBeFirstPerson && this.firstPerson) {
+      this.cam.zoom = clamp(this.thirdPersonZoom, MIN_THIRD_PERSON_ZOOM, MAX_ZOOM)
       this.firstPerson = false
-      this.avatar.visible = true
+      if (this.avatar) this.avatar.visible = true
+    }
+    if (!this.firstPerson) {
+      this.thirdPersonZoom = clamp(this.cam.zoom, MIN_THIRD_PERSON_ZOOM, MAX_ZOOM)
     }
 
     // stick movement threshold
@@ -1021,17 +1044,35 @@ export class PlayerLocal extends Entity {
       this.capsuleHandle.snap(pose)
     }
     // make camera follow our position horizontally
-    this.cam.position.copy(this.base.position)
-    if (isXR) {
-      // ...
+    if (this.firstPerson && !isXR) {
+      let headPositioned = false
+      if (this.avatar) {
+        const headMatrix = this.avatar.getBoneTransform('head')
+        if (headMatrix) {
+          this.cam.position.setFromMatrixPosition(headMatrix)
+          headPositioned = true
+        }
+      }
+      if (!headPositioned) {
+        this.cam.position.copy(this.base.position)
+        this.cam.position.y += this.camHeight
+      }
+      // Apply a slight offset so we're forward from the head and inherit subtle motion
+      v1.copy(FIRST_PERSON_HEAD_OFFSET).applyQuaternion(this.cam.quaternion)
+      this.cam.position.add(v1)
     } else {
-      // and vertically at our vrm model height
-      this.cam.position.y += this.camHeight
-      // and slightly to the right over the avatars shoulder, when not first person / xr
-      if (!this.firstPerson) {
-        const forward = v1.copy(FORWARD).applyQuaternion(this.cam.quaternion)
-        const right = v2.crossVectors(forward, UP).normalize()
-        this.cam.position.add(right.multiplyScalar(0.3))
+      this.cam.position.copy(this.base.position)
+      if (isXR) {
+        // ...
+      } else {
+        // and vertically at our vrm model height
+        this.cam.position.y += this.camHeight
+        // and slightly to the right over the avatars shoulder, when not first person / xr
+        if (!this.firstPerson) {
+          const forward = v1.copy(FORWARD).applyQuaternion(this.cam.quaternion)
+          const right = v2.crossVectors(forward, UP).normalize()
+          this.cam.position.add(right.multiplyScalar(0.3))
+        }
       }
     }
     if (this.world.xr?.session) {
