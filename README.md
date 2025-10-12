@@ -50,6 +50,44 @@ npm run dev
 
 For containerized deployment, check [DOCKER.md](DOCKER.md) for detailed instructions.
 
+## 🤖 Automation Agent
+
+Hyperfy ships with a headless agent (`agent.mjs`) that can connect to a world, simulate
+basic avatar movement, and send chat messages. This is useful for smoke testing a new
+deployment, building automated demos, or populating a world with scripted behaviour.
+
+### Running the agent
+
+```bash
+node agent.mjs --ws-url ws://localhost:3000/ws --name "Bot"
+```
+
+Use CLI flags or environment variables to tailor the behaviour:
+
+| Capability | CLI flags | Environment variables |
+| --- | --- | --- |
+| Target world | `--ws-url`, `--name`, `--avatar` | `HYPERFY_AGENT_WS_URL`, `HYPERFY_AGENT_NAME`, `HYPERFY_AGENT_AVATAR` |
+| Movement | `--move-mode`, `--no-move`,<br>`--keys`, `--interval`, `--press-probability`, `--max-active` | `HYPERFY_AGENT_MOVE_MODE`, `HYPERFY_AGENT_MOVE_ENABLED`,<br>`HYPERFY_AGENT_WANDER_KEYS`, `HYPERFY_AGENT_WANDER_INTERVAL_MS`, `HYPERFY_AGENT_WANDER_PRESS_PROBABILITY`, `HYPERFY_AGENT_WANDER_MAX_ACTIVE` |
+| Chat | `--no-chat`, `--chat-message`,<br>`--chat-delay`, `--chat-repeat` | `HYPERFY_AGENT_CHAT_ENABLED`, `HYPERFY_AGENT_CHAT_MESSAGE`,<br>`HYPERFY_AGENT_CHAT_DELAY_MS`, `HYPERFY_AGENT_CHAT_REPEAT_MS` |
+| Resilience | `--auto-reconnect`, `--reconnect-delay` | `HYPERFY_AGENT_AUTO_RECONNECT`, `HYPERFY_AGENT_RECONNECT_DELAY_MS` |
+| Logging | `--silent`, `--verbose` | `HYPERFY_AGENT_VERBOSE` |
+
+All timing arguments accept milliseconds. The default movement mode is `wander`, which
+randomly toggles the configured control keys. Set `--move-mode idle` or `--no-move` to
+disable locomotion while keeping chat automation enabled.
+
+Example: keep a lightweight greeter active in a production lobby:
+
+```bash
+HYPERFY_AGENT_WS_URL=wss://my-world.example/ws \
+node agent.mjs \
+  --name "Lobby Guide" \
+  --chat-message "Welcome! Let me know if you need help." \
+  --chat-repeat 15000 \
+  --keys keyW,keyA,keyS,keyD \
+  --max-active 1
+```
+
 ## 🧩 Use Cases
 
 - **Virtual Events & Conferences** - Host live gatherings with spatial audio
