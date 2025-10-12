@@ -13,6 +13,7 @@ import { Entities } from './systems/Entities'
 import { Economy } from './systems/Economy'
 import { Physics } from './systems/Physics'
 import { Stage } from './systems/Stage'
+import { ProceduralChallenges } from './systems/ProceduralChallenges'
 import { Scripts } from './systems/Scripts'
 import { Companions } from './systems/Companions'
 import { Mounts } from './systems/Mounts'
@@ -55,6 +56,7 @@ export class World extends EventEmitter {
     this.register('mounts', Mounts)
     this.register('physics', Physics)
     this.register('stage', Stage)
+    this.register('challenges', ProceduralChallenges)
   }
 
   register(key, System) {
