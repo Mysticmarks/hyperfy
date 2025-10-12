@@ -28,9 +28,18 @@
       "version": "detect"
     }
   },
+  "globals": {
+    "Compartment": "readonly",
+    "env": "readonly",
+    "lockdown": "readonly",
+    "PHYSX": "readonly",
+    "THREE": "readonly",
+    "world": "readonly"
+  },
   "rules": {
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",
+    "react/no-unknown-property": ["error", { "ignore": ["css"] }],
     "no-unused-vars": ["warn", {
       "argsIgnorePattern": "^_",
       "varsIgnorePattern": "^_"
@@ -39,7 +48,10 @@
     "react-hooks/exhaustive-deps": "warn",
     "no-console": ["warn", { "allow": ["warn", "error"] }],
     "prefer-const": "warn",
-    "no-var": "error"
+    "no-var": "off",
+    "no-prototype-builtins": "off",
+    "no-loss-of-precision": "off",
+    "no-case-declarations": "off"
   },
   "ignorePatterns": [
     "build/**/*",

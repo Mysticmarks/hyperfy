@@ -986,7 +986,7 @@ function createShape(config) {
 
     default:
       console.warn(`[particles] unknown shape: ${type}, using 'point' as fallback`)
-      return createShape('point', dimensions, thickness)
+      return createShape(['point'])
   }
 }
 

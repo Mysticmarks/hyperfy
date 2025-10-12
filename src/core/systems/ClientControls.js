@@ -389,7 +389,7 @@ export class ClientControls extends System {
           const capture = button.onPress?.()
           if (capture || button.capture) break
         }
-        const capture = control.onButtonPress?.(prop, text)
+        const capture = control.onButtonPress?.(prop)
         if (capture) break
       }
     } else {

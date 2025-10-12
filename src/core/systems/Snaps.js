@@ -1,3 +1,5 @@
+import * as THREE from '../extras/three'
+
 import { System } from './System'
 import { SnapOctree } from '../extras/SnapOctree'
 

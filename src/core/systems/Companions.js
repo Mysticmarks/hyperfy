@@ -626,7 +626,7 @@ export class Companions extends System {
     this.world.network?.send('companionRegistryUpdate', { op: 'create', definition })
   }
 
-  update(id, changes) {
+  updateCompanion(id, changes) {
     if (this.world.network?.isServer) {
       return this.updateDefinition(id, changes)
     }
