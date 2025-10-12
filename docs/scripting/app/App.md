@@ -65,7 +65,20 @@ Creates and returns a node of the specified name.
 
 #### `.control(options)`: Control
 
-TODO: provides control to a client to respond to inputs and move the camera etc
+Requests a high-priority input binding for the app. The optional `options` object is passed through to the control system, so
+you can specify an `onRelease` callback to clean up when the binding is lost. Apps always receive `ControlPriorities.APP`, so
+their inputs trump the local player while the control is active. 【F:src/core/systems/Apps.js†L307-L324】【F:src/core/systems/ClientControls.js†L246-L303】
+
+The returned handle lazily exposes input channels. Asking for `control.keyW` or `control.mouseLeft` creates button trackers with
+`down`, `pressed`, and `released` flags plus `onPress`/`onRelease` hooks; setting `capture = true` on a button or vector stops
+lower-priority bindings from seeing the event. Pointer and XR helpers expose the latest `position`, `coords`, and `delta`, and
+they include `lock()`/`unlock()` helpers that forward to the browser pointer-lock API (remember to call these from a user
+gesture). Screen metadata and scroll values are also available so UI can respond to viewport changes. 【F:src/core/systems/ClientControls.js†L266-L392】【F:src/core/systems/ClientControls.js†L640-L725】
+
+For camera-driven experiences you can read and write through `control.camera`: enable `camera.write = true` to drive the rig,
+update its `position`, `quaternion`, or `zoom`, and use the bound Euler `rotation` helper for yaw/pitch style controls. When the
+control should go away, call `control.release()` or rely on `destroy` handlers—apps automatically release any bound controls
+before rebuilding or shutting down. 【F:src/core/systems/ClientControls.js†L214-L235】【F:src/core/entities/App.js†L144-L216】
 
 #### `.configure(fields)`
 

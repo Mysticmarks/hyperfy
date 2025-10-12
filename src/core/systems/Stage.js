@@ -206,16 +206,17 @@ export class Stage extends System {
         raw.fog = value
         raw.needsUpdate = true
       },
-      // TODO: not yet
-      // clone() {
-      //   return self.createMaterial(options).proxy
-      // },
+      clone() {
+        const cloned = self.createMaterial({ raw })
+        return cloned.proxy
+      },
       get _ref() {
         if (world._allowMaterial) return material
       },
     }
     material.raw = raw
     material.proxy = proxy
+    material.clone = () => self.createMaterial({ raw })
     return material
   }
 

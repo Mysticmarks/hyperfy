@@ -8,7 +8,26 @@ Once scripting is stable we'll move toward a forward compatible model, which wil
 
 ## Lifecycle
 
-TODO: explain the app lifecycle across client and server
+Hyperfy worlds run the same simulation loop on both the authoritative server and on every connected client. Each tick of the
+[`World`](../world/World.md) advances through fixed updates, variable updates, late updates, and commit phases, so scripts only
+execute during the portions that they explicitly subscribe to. 【F:src/core/World.js†L21-L123】
+
+When a world boots, the server loads the saved blueprints for every app and calls [`App.build`](../app/App.md). This fetches the
+GLB, converts it into a node hierarchy, and then executes the app script if the instance is active. The same build pipeline
+runs on each client as soon as the server streams the blueprint snapshot, so both environments see the same node graph and
+scripted behaviour. 【F:src/core/entities/App.js†L21-L144】
+
+Scripts live side-by-side on the server and client. Networking keeps them in sync: the server is the source of truth for
+`app.state`, so new clients receive the latest state during their initial snapshot, and custom events relayed with
+`app.send`/`app.emit` travel through the [Apps system](../app/App.md#send-name-data-skipnetworkid). 【F:docs/scripting/app/App.md†L25-L53】
+
+Once a script is running, the app emits `fixedUpdate`, `update`, and `lateUpdate` callbacks during the corresponding world
+phases on any side where the script is active. Subscribing with `app.on('update', ...)` marks the app as "hot", ensuring the
+engine invokes it every frame; unsubscribing relinquishes those ticks to keep idle apps cheap. 【F:src/core/entities/App.js†L151-L190】
+
+Whenever a blueprint changes (for example after publishing a new model or script) or an app is removed, the engine first fires
+`destroy`, releases any grabbed controls, deactivates spawned world nodes, and clears event listeners. The app then rebuilds
+from the new data or shuts down cleanly, so both server and clients converge on the same version. 【F:src/core/entities/App.js†L144-L216】
 
 ## Apps
 

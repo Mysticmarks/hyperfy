@@ -18,11 +18,22 @@ This not only reduces the file size of your model, but our engine is able to bet
 
 ## LODs
 
-- TODO: lod node
-- TODO: inserting lod children
+- Add a custom property named `node` with the value `lod` on an Empty or collection root to mark it as an LOD group. The
+  converter recognises this flag and spawns a dedicated [`LOD` node](../scripting/nodes/types/LOD.md) at runtime. 【F:src/core/extras/glbToNodes.js†L40-L55】
+- Toggle `scaleAware` on the same object when you want distances to scale with the rendered model; it maps straight through to
+  the node's `scaleAware` property. 【F:src/core/extras/glbToNodes.js†L40-L55】
+- Give each child mesh a `maxDistance` custom property (in metres). During import the loader uses that value when inserting the
+  child into the LOD so that higher-detail meshes disable themselves automatically. The bundled Blender panel exposes this field
+  as **Max Distance** to make editing easier. 【F:src/core/extras/glbToNodes.js†L12-L33】【F:docs/extras/blender-addon.py†L776-L865】
 
 ## Collision
 
-- TODO: rigidbody node
-- TODO: collider node
-- TODO: wireframe display
+- Create a rigidbody root by setting `node = rigidbody` on an Empty. Optional properties such as `type` (`static`, `kinematic`,
+  or `dynamic`) and `mass` are preserved on export and initialise the [`RigidBody` node](../scripting/nodes/types/RigidBody.md)
+  in the engine. 【F:src/core/extras/glbToNodes.js†L56-L68】
+- Add collider children underneath the rigidbody. Setting `node = collider` on a mesh plus flags like `convex`, `trigger`, or a
+  custom `layer` makes the importer emit [`Collider` nodes](../scripting/nodes/types/Collider.md) that PhysX can attach to the
+  rigidbody. The addon includes Convex and Trigger toggles so you can confirm their state directly inside Blender. 【F:src/core/extras/glbToNodes.js†L69-L89】【F:docs/extras/blender-addon.py†L728-L756】
+- Collider meshes act purely as metadata—the engine consumes their geometry and discards their materials—so keep them as simple
+  single-material shapes that are easy to read in wireframe. Complex, multi-material collider meshes are ignored during import,
+  matching the warning in the loader. 【F:src/core/extras/glbToNodes.js†L69-L83】
