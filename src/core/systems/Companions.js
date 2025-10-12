@@ -426,6 +426,7 @@ export class Companions extends System {
     }
     this.updateState()
     this.persistState()
+    this.emit('assigned', { playerId, templateId: templateId || null })
     if (broadcast) this.broadcastState()
   }
 
@@ -445,6 +446,7 @@ export class Companions extends System {
       this.persistState()
       if (broadcast) this.broadcastState()
     }
+    this.emit('assigned', { playerId: id, templateId })
   }
 
   spawnCompanion(playerId, templateId) {
