@@ -58,6 +58,7 @@ for (const zoneConfig of configuredZones) {
   world.zoneLabel = zoneConfig.label
   if (zoneConfig.tickRate) {
     world.networkRate = 1 / zoneConfig.tickRate
+    world.serverTickRate = zoneConfig.tickRate
   }
   world.assetsUrl = publicConfig.assetsUrl
   world.collections.deserialize(cloneCollections(baseCollections))
