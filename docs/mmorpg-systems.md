@@ -20,7 +20,7 @@ required.
 | --- | --- | --- |
 | Zone storage | Each zone provisions a dedicated SQLite database and JSON storage to avoid data collisions. | [Server entrypoint](../src/server/index.js). |
 | Collections hydration | Base collections load once, then clone into every zone during boot. | [Server entrypoint](../src/server/index.js). |
-| Character data services | Not yet implemented; roadmap calls for account, inventory, and quest schemas. | [Roadmap section](./mmorpg-roadmap.md#2-persistence--progression). |
+| Character data services | `ServerCharacters` now provisions per-zone character, inventory, and quest records with REST accessors. | [Server character system](../src/core/systems/ServerCharacters.js) and [server entrypoint](../src/server/index.js). |
 
 ## 3. Gameplay & Social Layers
 

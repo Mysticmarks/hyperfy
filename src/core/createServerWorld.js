@@ -3,6 +3,7 @@ import { World } from './World'
 import { Server } from './systems/Server'
 import { ServerLiveKit } from './systems/ServerLiveKit'
 import { ServerNetwork } from './systems/ServerNetwork'
+import { ServerCharacters } from './systems/ServerCharacters'
 import { ServerLoader } from './systems/ServerLoader'
 import { ServerEnvironment } from './systems/ServerEnvironment'
 import { ServerMonitor } from './systems/ServerMonitor'
@@ -15,5 +16,6 @@ export function createServerWorld() {
   world.register('loader', ServerLoader)
   world.register('environment', ServerEnvironment)
   world.register('monitor', ServerMonitor)
+  world.register('characters', ServerCharacters)
   return world
 }

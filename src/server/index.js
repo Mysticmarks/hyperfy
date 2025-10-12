@@ -199,6 +199,94 @@ fastify.get('/api/upload-check', async (req, reply) => {
   return { exists }
 })
 
+fastify.get('/api/zones/:zoneId/characters/:userId', async (req, reply) => {
+  const { zoneId, userId } = req.params
+  const zone = resolveZone(zoneId)
+  if (!zone) {
+    reply.code(404)
+    return { error: 'Zone not found' }
+  }
+  const character = await zone.world.characters.getCharacterByUserId(userId, { create: false })
+  if (!character) {
+    reply.code(404)
+    return { error: 'Character not found' }
+  }
+  return { character: zone.world.characters.serializeForClient(character) }
+})
+
+fastify.post('/api/zones/:zoneId/characters/:userId', async (req, reply) => {
+  const { zoneId, userId } = req.params
+  const zone = resolveZone(zoneId)
+  if (!zone) {
+    reply.code(404)
+    return { error: 'Zone not found' }
+  }
+  const payload = req.body ?? {}
+  const character = await zone.world.characters.getCharacterByUserId(userId, {
+    create: true,
+    name: payload.name,
+    spawn: payload.spawn ?? zone.world.network.spawn,
+  })
+  if (payload?.name) {
+    await zone.world.characters.updateCharacterName(character.id, payload.name)
+  }
+  return { character: zone.world.characters.serializeForClient(character) }
+})
+
+fastify.post('/api/zones/:zoneId/characters/:characterId/inventory', async (req, reply) => {
+  const { zoneId, characterId } = req.params
+  const zone = resolveZone(zoneId)
+  if (!zone) {
+    reply.code(404)
+    return { error: 'Zone not found' }
+  }
+  const item = await zone.world.characters.upsertInventoryItem(characterId, req.body ?? {})
+  if (!item) {
+    reply.code(400)
+    return { error: 'Invalid inventory payload' }
+  }
+  return { item }
+})
+
+fastify.delete('/api/zones/:zoneId/characters/:characterId/inventory/:itemId', async (req, reply) => {
+  const { zoneId, characterId, itemId } = req.params
+  const zone = resolveZone(zoneId)
+  if (!zone) {
+    reply.code(404)
+    return { error: 'Zone not found' }
+  }
+  const rawSlot = req.query?.slot
+  const slot = rawSlot === undefined || rawSlot === null || rawSlot === 'null' || rawSlot === 'undefined' ? null : rawSlot
+  await zone.world.characters.removeInventoryItem(characterId, itemId, slot)
+  return { success: true }
+})
+
+fastify.post('/api/zones/:zoneId/characters/:characterId/quests', async (req, reply) => {
+  const { zoneId, characterId } = req.params
+  const zone = resolveZone(zoneId)
+  if (!zone) {
+    reply.code(404)
+    return { error: 'Zone not found' }
+  }
+  const quest = await zone.world.characters.upsertQuestState(characterId, req.body?.questId, req.body ?? {})
+  if (!quest) {
+    reply.code(400)
+    return { error: 'Invalid quest payload' }
+  }
+  return { quest }
+})
+
+fastify.delete('/api/zones/:zoneId/characters/:characterId/quests/:questId', async (req, reply) => {
+  const { zoneId, characterId, questId } = req.params
+  const zone = resolveZone(zoneId)
+  if (!zone) {
+    reply.code(404)
+    return { error: 'Zone not found' }
+  }
+  await zone.world.characters.removeQuest(characterId, questId)
+  return { success: true }
+})
+
 fastify.get('/health', async (request, reply) => {
   try {
     const snapshots = getZoneSnapshots()
