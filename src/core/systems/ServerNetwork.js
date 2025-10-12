@@ -281,6 +281,8 @@ export class ServerNetwork extends System {
         true
       )
 
+      this.world.companions.ensureCompanionForPlayer(socket.player.data.id, { broadcast: false })
+
       // send snapshot
       socket.send('snapshot', {
         id: socket.id,
@@ -293,10 +295,13 @@ export class ServerNetwork extends System {
         chat: this.world.chat.serialize(),
         blueprints: this.world.blueprints.serialize(),
         entities: this.world.entities.serialize(),
+        companions: this.world.companions.serializeState(),
         livekit,
         authToken,
         hasAdminCode: AUTH_CONFIG.hasAdminCode,
       })
+
+      this.world.companions.broadcastState()
 
       this.sockets.set(socket.id, socket)
 
@@ -504,6 +509,41 @@ export class ServerNetwork extends System {
     this.world.entities.remove(id)
     this.send('entityRemoved', id, socket.id)
     if (entity.isApp) this.dirtyApps.add(id)
+  }
+
+  onCompanionRegistryUpdate = (socket, data) => {
+    if (!socket.player.isBuilder()) {
+      return console.error('player attempted to modify companion registry without builder permission')
+    }
+    if (!data || typeof data !== 'object') return
+    const { op } = data
+    if (op === 'create') {
+      this.world.companions.createDefinition(data.definition || {})
+    } else if (op === 'update') {
+      if (!data.id) return
+      this.world.companions.updateDefinition(data.id, data.changes || {})
+    } else if (op === 'remove') {
+      if (!data.id) return
+      this.world.companions.removeDefinition(data.id)
+    }
+  }
+
+  onCompanionGenerate = (socket, options) => {
+    if (!socket.player.isBuilder()) {
+      return console.error('player attempted to generate companion without builder permission')
+    }
+    this.world.companions.generateDefinition(options || {})
+  }
+
+  onCompanionAssign = (socket, data) => {
+    if (!data || typeof data !== 'object') return
+    let { playerId, templateId } = data
+    if (!playerId || playerId === socket.player.data.id) {
+      playerId = socket.player.data.id
+    } else if (!socket.player.isBuilder()) {
+      return console.error('player attempted to assign companion for another player without permission')
+    }
+    this.world.companions.assign(playerId, templateId)
   }
 
   onSettingsModified = (socket, data) => {

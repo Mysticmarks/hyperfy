@@ -13,6 +13,7 @@ import { Entities } from './systems/Entities'
 import { Physics } from './systems/Physics'
 import { Stage } from './systems/Stage'
 import { Scripts } from './systems/Scripts'
+import { Companions } from './systems/Companions'
 
 export class World extends EventEmitter {
   constructor() {
@@ -45,6 +46,7 @@ export class World extends EventEmitter {
     this.register('chat', Chat)
     this.register('blueprints', Blueprints)
     this.register('entities', Entities)
+    this.register('companions', Companions)
     this.register('physics', Physics)
     this.register('stage', Stage)
   }

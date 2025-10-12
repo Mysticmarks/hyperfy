@@ -140,6 +140,9 @@ export class ClientNetwork extends System {
     this.world.chat.deserialize(data.chat)
     this.world.blueprints.deserialize(data.blueprints)
     this.world.entities.deserialize(data.entities)
+    if (data.companions) {
+      this.world.companions.deserialize(data.companions, { broadcast: false })
+    }
     this.world.livekit?.deserialize(data.livekit)
     storage.set('authToken', data.authToken)
   }
@@ -182,6 +185,10 @@ export class ClientNetwork extends System {
 
   onEntityRemoved = id => {
     this.world.entities.remove(id)
+  }
+
+  onCompanionsState = data => {
+    this.world.companions.deserialize(data)
   }
 
   onPlayerTeleport = data => {
