@@ -1,6 +1,6 @@
 # MMORPG Readiness Roadmap
 
-This document outlines concrete engineering initiatives that would move Hyperfy from a shared virtual world framework toward a production-ready MMORPG platform.
+This document outlines concrete engineering initiatives that would move Hyperfy from a shared virtual world framework toward a production-ready MMORPG platform. For a cross-system snapshot of what already exists in the repository and how the roadmap layers interlock, see the [MMORPG Systems Integration Guide](./mmorpg-systems.md).
 
 ## 1. Infrastructure & Scale
 
