@@ -4,6 +4,50 @@ import { DEFAULT_COMPANIONS } from '../extras/companionDefaults'
 import { uuid } from '../utils'
 
 const STORAGE_KEY = 'companions.state'
+const MAX_COMPANION_SCALE = 5 / 8
+const COMMUNICATION_INTERVAL = 6
+const COMMUNICATION_RADIUS = 12
+const COMMUNICATION_SCAN_INTERVAL = 0.5
+
+function sanitizeAppearance(appearance = {}) {
+  const next = cloneDeep(appearance)
+  const currentScale = typeof next.scale === 'number' ? next.scale : MAX_COMPANION_SCALE
+  next.scale = Math.min(Math.max(currentScale, 0.1), MAX_COMPANION_SCALE)
+  if (typeof next.height === 'number') {
+    next.height = Math.min(next.height, MAX_COMPANION_SCALE * 2.2)
+  }
+  next.validation = {
+    ...(next.validation || {}),
+    maxScale: MAX_COMPANION_SCALE,
+    validatedAt: Date.now(),
+  }
+  return next
+}
+
+function enforceAppearance(definition) {
+  const before = definition.appearance?.scale
+  definition.appearance = sanitizeAppearance(definition.appearance || {})
+  const after = definition.appearance.scale
+  if (before !== after) {
+    definition.metadata = {
+      ...(definition.metadata || {}),
+      scaleAdjusted: true,
+      scaleValidatedAt: Date.now(),
+    }
+  } else {
+    definition.metadata = {
+      ...(definition.metadata || {}),
+      scaleValidatedAt: Date.now(),
+    }
+  }
+  return definition
+}
+
+function resolvePlayerName(world, playerId) {
+  if (!playerId) return 'their player'
+  const player = world.entities.get(playerId)
+  return player?.data?.displayName || player?.data?.name || playerId
+}
 
 function seededRandom(seed) {
   if (seed === undefined || seed === null) {
@@ -38,6 +82,8 @@ export class Companions extends System {
       assignments: {},
     }
     this.ready = false
+    this.communicationAccumulator = 0
+    this.communicationTracker = new Map()
 
     this.onEntityAdded = this.onEntityAdded.bind(this)
     this.onEntityRemoved = this.onEntityRemoved.bind(this)
@@ -84,7 +130,7 @@ export class Companions extends System {
   ensureDefaultRegistry() {
     if (this.registry.size > 0) return
     for (const def of DEFAULT_COMPANIONS) {
-      this.registry.set(def.id, cloneDeep(def))
+      this.registry.set(def.id, enforceAppearance(cloneDeep(def)))
     }
     this.updateState()
   }
@@ -106,7 +152,7 @@ export class Companions extends System {
     const assignments = state.assignments || {}
     this.registry.clear()
     for (const def of registry) {
-      this.registry.set(def.id, cloneDeep(def))
+      this.registry.set(def.id, enforceAppearance(cloneDeep(def)))
     }
     this.assignments = new Map(Object.entries(assignments))
     this.updateState()
@@ -152,7 +198,7 @@ export class Companions extends System {
         appearance: {
           type: 'avatar',
           url: 'asset://avatar.vrm',
-          scale: 1,
+          scale: MAX_COMPANION_SCALE,
           tint: '#ffffff',
           locomotionSet: 'humanoid',
         },
@@ -194,6 +240,7 @@ export class Companions extends System {
       },
       cloneDeep(definition)
     )
+    enforceAppearance(next)
     next.metadata.updatedAt = now
     this.registry.set(next.id, next)
     if (setDefault) {
@@ -213,6 +260,7 @@ export class Companions extends System {
       ...(current.metadata || {}),
       updatedAt: Date.now(),
     }
+    enforceAppearance(next)
     this.registry.set(id, next)
     if (changes?.metadata?.default) {
       this.setDefaultTemplate(id)
@@ -299,7 +347,7 @@ export class Companions extends System {
       appearance: {
         type: 'avatar',
         url: options.model || 'asset://avatar.vrm',
-        scale: options.scale || 1,
+        scale: Math.min(options.scale || MAX_COMPANION_SCALE, MAX_COMPANION_SCALE),
         tint: options.tint || '#ffffff',
         locomotionSet: options.locomotionSet || 'humanoid',
       },
@@ -357,6 +405,8 @@ export class Companions extends System {
       },
     }
 
+    enforceAppearance(def)
+
     return this.createDefinition(def, { setDefault: !!def.metadata.default })
   }
 
@@ -408,23 +458,25 @@ export class Companions extends System {
     const position = owner?.base?.position ? owner.base.position.toArray() : [0, 0, 0]
     const quaternion = owner?.base?.quaternion ? owner.base.quaternion.toArray() : [0, 0, 0, 1]
 
+    const sanitizedTemplate = enforceAppearance(cloneDeep(template))
+
     const data = {
       id: entityId,
       type: 'companion',
       ownerId: playerId,
       templateId,
-      name: template.name,
-      displayName: template.title ? `${template.name}, ${template.title}` : template.name,
-      title: template.title,
-      persona: template.persona,
-      archetype: template.archetype,
-      appearance: clone(template.appearance),
-      locomotion: clone(template.locomotion),
-      behavior: clone(template.behavior),
-      skills: clone(template.skills),
-      instructions: clone(template.instructions),
-      llm: clone(template.llm),
-      metadata: clone(template.metadata),
+      name: sanitizedTemplate.name,
+      displayName: sanitizedTemplate.title ? `${sanitizedTemplate.name}, ${sanitizedTemplate.title}` : sanitizedTemplate.name,
+      title: sanitizedTemplate.title,
+      persona: sanitizedTemplate.persona,
+      archetype: sanitizedTemplate.archetype,
+      appearance: clone(sanitizedTemplate.appearance),
+      locomotion: clone(sanitizedTemplate.locomotion),
+      behavior: clone(sanitizedTemplate.behavior),
+      skills: clone(sanitizedTemplate.skills),
+      instructions: clone(sanitizedTemplate.instructions),
+      llm: clone(sanitizedTemplate.llm),
+      metadata: clone(sanitizedTemplate.metadata),
       position,
       quaternion,
       state: {
@@ -435,6 +487,7 @@ export class Companions extends System {
     const entity = this.world.entities.add(data, true)
     this.instances.set(entityId, entity)
     this.ownerToInstance.set(playerId, entityId)
+    this.world.economy?.linkCompanion(entityId, playerId)
     return entity
   }
 
@@ -448,6 +501,7 @@ export class Companions extends System {
     this.world.entities.remove(entityId)
     this.instances.delete(entityId)
     this.ownerToInstance.delete(playerId)
+    this.world.economy?.unlinkCompanion(entityId)
   }
 
   onEntityAdded(entity) {
@@ -469,6 +523,7 @@ export class Companions extends System {
       this.assignments.delete(entity.data.ownerId)
       this.updateState()
     }
+    this.world.economy?.unlinkCompanion(entity.data.id)
   }
 
   onPlayerEnter({ playerId }) {
@@ -483,6 +538,63 @@ export class Companions extends System {
     this.updateState()
     this.persistState()
     this.broadcastState()
+  }
+
+  update(delta) {
+    if (!this.world.network?.isServer) return
+    if (this.instances.size < 2) return
+    this.communicationAccumulator += delta
+    if (this.communicationAccumulator < COMMUNICATION_SCAN_INTERVAL) return
+    this.communicationAccumulator = 0
+    const now = Date.now()
+    const companions = Array.from(this.instances.values())
+    for (let i = 0; i < companions.length; i++) {
+      const a = companions[i]
+      const posA = a?.base?.position
+      if (!posA?.distanceTo) continue
+      for (let j = i + 1; j < companions.length; j++) {
+        const b = companions[j]
+        const posB = b?.base?.position
+        if (!posB?.distanceTo) continue
+        const distance = posA.distanceTo(posB)
+        if (!Number.isFinite(distance) || distance > COMMUNICATION_RADIUS) continue
+        const key = a.data.id < b.data.id ? `${a.data.id}:${b.data.id}` : `${b.data.id}:${a.data.id}`
+        const last = this.communicationTracker.get(key) || 0
+        if (now - last < COMMUNICATION_INTERVAL * 1000) continue
+        this.communicationTracker.set(key, now)
+        this.initiateCompanionConversation(a, b, now, distance)
+      }
+    }
+  }
+
+  initiateCompanionConversation(companionA, companionB, timestamp, distance) {
+    const economy = this.world.economy
+    const ledgerA = economy?.getCompanionLedger(companionA.data.id)
+    const ledgerB = economy?.getCompanionLedger(companionB.data.id)
+    const currencyA = ledgerA?.currency
+    const currencyB = ledgerB?.currency
+    const describeCurrency = currency => {
+      if (!currency) return '0 Bytes and 0 Bits'
+      const byteLabel = currency.bytes === 1 ? 'Byte' : 'Bytes'
+      return `${currency.bytes} ${byteLabel} and ${currency.bits} Bits`
+    }
+    const ownerA = resolvePlayerName(this.world, companionA.data.ownerId)
+    const ownerB = resolvePlayerName(this.world, companionB.data.ownerId)
+    const messageA = `Signal check, ${companionB.data.name}. Guarding ${describeCurrency(currencyA)} for ${ownerA}.`
+    const messageB = `Acknowledged, ${companionA.data.name}. ${ownerB} trusts me with ${describeCurrency(currencyB)}. Bits ready.`
+
+    this.speak(companionA.data.id, messageA)
+    this.speak(companionB.data.id, messageB)
+
+    const payload = {
+      from: companionA.data.id,
+      to: companionB.data.id,
+      at: timestamp,
+      distance,
+      owners: [companionA.data.ownerId, companionB.data.ownerId],
+    }
+    this.emit('proximity:chat', payload)
+    this.world.events.emit('companion:proximity-chat', payload)
   }
 
   sendDirective(companionId, directive) {
