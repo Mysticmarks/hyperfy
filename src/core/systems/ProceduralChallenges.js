@@ -431,7 +431,7 @@ export class ProceduralChallenges extends System {
       performance: result.performance ?? 1,
       luck: result.luck ?? 0,
       bonusRolls: (result.bonusRolls ?? 0) + (door?.lootProfile?.bonusRolls ?? 0),
-      playerCount: result.playerCount ?? record.players.size || 1,
+      playerCount: result.playerCount ?? (record.players.size || 1),
       extraBiasTags: mergeBiasTags(result.extraBiasTags, (door?.lootProfile?.tagBias ?? [])),
     })
     record.state = 'completed'

@@ -115,6 +115,7 @@ export class Stage extends System {
   createMaterial(options = {}) {
     const self = this
     const material = {}
+    const world = this.world
     let raw
     if (options.raw) {
       raw = options.raw.clone()
@@ -212,6 +213,7 @@ export class Stage extends System {
       },
       get _ref() {
         if (world._allowMaterial) return material
+        return undefined
       },
     }
     material.raw = raw

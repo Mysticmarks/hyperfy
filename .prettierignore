@@ -1,3 +1,7 @@
 *.md
 Vector3Enhanced.js
 GLTFLoader.js
+agent.mjs
+src/core/**
+src/server/**
+src/client/components/Sidebar.js

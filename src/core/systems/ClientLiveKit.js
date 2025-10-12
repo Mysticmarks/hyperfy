@@ -411,7 +411,7 @@ function createPlayerScreen({ world, playerId, targetId, track, participant }) {
      * The following code handles this for us, and when streaming
      * will hit play just until we get the data needed, then pause.
      */
-    return new Promise(async resolve => {
+    return new Promise(resolve => {
       let playing = false
       let data = false
       elem.addEventListener(

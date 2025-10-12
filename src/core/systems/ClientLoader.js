@@ -332,28 +332,20 @@ export class ClientLoader extends System {
       })
     }
     if (type === 'script') {
-      promise = new Promise(async (resolve, reject) => {
-        try {
-          const code = await file.text()
-          const script = this.world.scripts.evaluate(code)
-          this.results.set(key, script)
-          resolve(script)
-        } catch (err) {
-          reject(err)
-        }
-      })
+      promise = (async () => {
+        const code = await file.text()
+        const script = this.world.scripts.evaluate(code)
+        this.results.set(key, script)
+        return script
+      })()
     }
     if (type === 'audio') {
-      promise = new Promise(async (resolve, reject) => {
-        try {
-          const arrayBuffer = await file.arrayBuffer()
-          const audioBuffer = await this.world.audio.ctx.decodeAudioData(arrayBuffer)
-          this.results.set(key, audioBuffer)
-          resolve(audioBuffer)
-        } catch (err) {
-          reject(err)
-        }
-      })
+      promise = (async () => {
+        const arrayBuffer = await file.arrayBuffer()
+        const audioBuffer = await this.world.audio.ctx.decodeAudioData(arrayBuffer)
+        this.results.set(key, audioBuffer)
+        return audioBuffer
+      })()
     }
     this.promises.set(key, promise)
   }
@@ -418,7 +410,7 @@ function createVideoFactory(world, url) {
          * The following code handles this for us, and when streaming
          * will hit play just until we get the data needed, then pause.
          */
-        return new Promise(async resolve => {
+        return new Promise(resolve => {
           let playing = false
           let data = false
           elem.addEventListener(

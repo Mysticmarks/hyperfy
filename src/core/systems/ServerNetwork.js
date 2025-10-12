@@ -615,7 +615,7 @@ export class ServerNetwork extends System {
     if (cmd === 'server') {
       const op = arg1
       if (op === 'stats') {
-        function send(body) {
+        const send = body => {
           socket.send('chatAdded', {
             id: uuid(),
             from: null,
@@ -720,11 +720,11 @@ export class ServerNetwork extends System {
       // persist player name and avatar changes
       const changes = {}
       let changed
-      if (data.hasOwnProperty('name')) {
+      if (Object.prototype.hasOwnProperty.call(data, 'name')) {
         changes.name = data.name
         changed = true
       }
-      if (data.hasOwnProperty('avatar')) {
+      if (Object.prototype.hasOwnProperty.call(data, 'avatar')) {
         changes.avatar = data.avatar
         changed = true
       }

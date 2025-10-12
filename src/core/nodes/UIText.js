@@ -367,7 +367,7 @@ export class UIText extends Node {
     if (!isEdge(value)) {
       throw new Error(`[uitext] padding not a number or array of numbers`)
     }
-    if (this._padding === value) rturn
+    if (this._padding === value) return
     this._padding = value
     if (isArray(this._padding)) {
       const [top, right, bottom, left] = this._padding

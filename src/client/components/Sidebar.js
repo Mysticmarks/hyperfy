@@ -1962,7 +1962,7 @@ function CompanionsPane({ world, hidden }) {
 
   const save = () => {
     if (!draft || !isBuilder) return
-    world.companions.update(draft.id, draft)
+    world.companions.updateCompanion(draft.id, draft)
   }
 
   const remove = () => {
@@ -1972,7 +1972,7 @@ function CompanionsPane({ world, hidden }) {
 
   const setDefault = () => {
     if (!draft || !isBuilder) return
-    world.companions.update(draft.id, { metadata: { default: true } })
+    world.companions.updateCompanion(draft.id, { metadata: { default: true } })
   }
 
   const createManual = () => {
