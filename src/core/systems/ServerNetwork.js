@@ -256,6 +256,15 @@ export class ServerNetwork extends System {
         return
       }
 
+      const character = await this.world.characters.getCharacterByUserId(user.id, {
+        create: true,
+        name: name || user.name,
+        spawn: this.spawn,
+      })
+      const spawnTransform = this.world.characters.resolveSpawn(character, this.spawn)
+      const characterHealth = character?.stats?.health ?? HEALTH_MAX
+      const resolvedName = character?.name || name || user.name
+
       // livekit options
       const livekit = await this.world.livekit.serialize(user.id)
 
@@ -267,19 +276,27 @@ export class ServerNetwork extends System {
         {
           id: user.id,
           type: 'player',
-          position: this.spawn.position.slice(),
-          quaternion: this.spawn.quaternion.slice(),
+          position: spawnTransform.position,
+          quaternion: spawnTransform.quaternion,
           owner: socket.id, // deprecated, same as userId
           userId: user.id, // deprecated, same as userId
-          name: name || user.name,
-          health: HEALTH_MAX,
+          name: resolvedName,
+          health: characterHealth,
           avatar: user.avatar || this.world.settings.avatar?.url || 'asset://avatar.vrm',
           sessionAvatar: avatar || null,
           rank: user.rank,
           enteredAt: Date.now(),
+          characterId: character?.id || null,
+          level: character?.level ?? 1,
+          experience: character?.experience ?? 0,
+          currency: character?.currency ?? 0,
+          stats: character?.stats ?? null,
         },
         true
       )
+
+      const characterSnapshot = this.world.characters.attachToPlayer(socket.player, character)
+      await this.world.characters.markLogin(character?.id)
 
       this.world.companions.ensureCompanionForPlayer(socket.player.data.id, { broadcast: false })
       this.world.mounts.ensureMountForPlayer(socket.player.data.id, { broadcast: false })
@@ -301,6 +318,7 @@ export class ServerNetwork extends System {
         livekit,
         authToken,
         hasAdminCode: AUTH_CONFIG.hasAdminCode,
+        character: characterSnapshot,
       })
 
       this.world.companions.broadcastState()
@@ -367,6 +385,7 @@ export class ServerNetwork extends System {
           createdAt: moment().toISOString(),
         })
         await this.db('users').where('id', userId).update({ name })
+        await this.world.characters.updateCharacterName(player.data.characterId, name)
       }
     }
     if (cmd === 'spawn') {
@@ -483,6 +502,7 @@ export class ServerNetwork extends System {
       this.dirtyApps.add(entity.data.id)
     }
     if (entity.isPlayer) {
+      this.world.characters.applyEntityPatch(entity, data)
       // persist player name and avatar changes
       const changes = {}
       let changed
@@ -633,6 +653,9 @@ export class ServerNetwork extends System {
 
   onDisconnect = (socket, code) => {
     this.world.livekit.clearModifiers(socket.id)
+    this.world.characters
+      .persistFromPlayer(socket.player)
+      .catch(err => console.error('failed to persist character on disconnect', err))
     socket.player.destroy(true)
     this.sockets.delete(socket.id)
   }

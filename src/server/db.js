@@ -413,4 +413,56 @@ const migrations = [
     const value = JSON.stringify(settings)
     await db('config').where('key', 'settings').update({ value })
   },
+  // add character persistence tables
+  async db => {
+    const hasCharacters = await db.schema.hasTable('characters')
+    if (!hasCharacters) {
+      await db.schema.createTable('characters', table => {
+        table.string('id').primary()
+        table.string('userId').notNullable().index()
+        table.string('zoneId').notNullable().index()
+        table.string('name').notNullable()
+        table.integer('level').notNullable().defaultTo(1)
+        table.integer('experience').notNullable().defaultTo(0)
+        table.integer('currency').notNullable().defaultTo(0)
+        table.text('stats').notNullable()
+        table.text('position').notNullable()
+        table.text('quaternion').notNullable()
+        table.timestamp('createdAt').notNullable()
+        table.timestamp('updatedAt').notNullable()
+        table.timestamp('lastLogin').nullable()
+        table.timestamp('lastLogout').nullable()
+        table.unique(['userId', 'zoneId'])
+      })
+    }
+    const hasInventory = await db.schema.hasTable('character_inventories')
+    if (!hasInventory) {
+      await db.schema.createTable('character_inventories', table => {
+        table.string('id').primary()
+        table.string('characterId').notNullable().index()
+        table.string('itemId').notNullable()
+        table.string('slot').nullable()
+        table.integer('quantity').notNullable().defaultTo(1)
+        table.text('metadata').notNullable()
+        table.timestamp('createdAt').notNullable()
+        table.timestamp('updatedAt').notNullable()
+        table.unique(['characterId', 'itemId', 'slot'])
+        table.foreign('characterId').references('characters.id').onDelete('CASCADE')
+      })
+    }
+    const hasQuests = await db.schema.hasTable('character_quests')
+    if (!hasQuests) {
+      await db.schema.createTable('character_quests', table => {
+        table.string('id').primary()
+        table.string('characterId').notNullable().index()
+        table.string('questId').notNullable()
+        table.string('status').notNullable()
+        table.text('progress').notNullable()
+        table.timestamp('createdAt').notNullable()
+        table.timestamp('updatedAt').notNullable()
+        table.unique(['characterId', 'questId'])
+        table.foreign('characterId').references('characters.id').onDelete('CASCADE')
+      })
+    }
+  },
 ]
