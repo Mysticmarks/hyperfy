@@ -12,7 +12,7 @@ required.
 | --- | --- | --- |
 | Multi-zone world hosting | `WORLD_ZONES` bootstraps isolated worlds with their own persistence directories while sharing the asset pipeline. | [Server entrypoint](../src/server/index.js) and [multi-zone runbook](./server-zones.md). |
 | Gateway endpoints | `/zones`, `/status`, `/metrics`, and `/health` expose zone state for orchestrators and dashboards. | [Server entrypoint](../src/server/index.js). |
-| Interest-managed networking | `ServerNetwork` exposes per-zone tick rate tuning; interest management and throttling remain to be implemented. | [Server networking system](../src/core/systems/ServerNetwork.js). |
+| Interest-managed networking | `ServerNetwork` now prioritises player replication using configurable throttling budgets and distance-aware interest scoring, tunable per zone. | [Server networking system](../src/core/systems/ServerNetwork.js). |
 
 ## 2. Persistence & Player State
 

@@ -183,6 +183,24 @@ function buildServerConfig(options = {}) {
 
   const zoneConfig = parseZoneConfig(readEnv('WORLD_ZONES', { allowEmpty: true }), worldDir)
 
+  const networkInterestRadius = parseInteger(
+    readEnv('SERVER_NETWORK_INTEREST_RADIUS', { defaultValue: '120' }),
+    'SERVER_NETWORK_INTEREST_RADIUS',
+    { min: 1 }
+  )
+
+  const networkReplicationBudget = parseInteger(
+    readEnv('SERVER_NETWORK_REPLICATION_BUDGET', { defaultValue: '48' }),
+    'SERVER_NETWORK_REPLICATION_BUDGET',
+    { min: 1 }
+  )
+
+  const networkThrottleMs = parseInteger(
+    readEnv('SERVER_NETWORK_THROTTLE_MS', { defaultValue: '50' }),
+    'SERVER_NETWORK_THROTTLE_MS',
+    { min: 1 }
+  )
+
   const port = parseInteger(readEnv('PORT', { defaultValue: '3000' }), 'PORT', {
     min: 1,
     max: 65535,
@@ -244,6 +262,13 @@ function buildServerConfig(options = {}) {
       saveInterval,
       zones: Object.freeze(zoneConfig),
       defaultZoneId: zoneConfig[0].id,
+      network: Object.freeze({
+        interestRadius: networkInterestRadius,
+        replication: Object.freeze({
+          perTickBudget: networkReplicationBudget,
+          throttleSeconds: networkThrottleMs / 1000,
+        }),
+      }),
     }),
     auth: Object.freeze({
       jwtSecret,

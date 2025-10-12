@@ -5,11 +5,15 @@ import { uuid } from '../utils'
 import { System } from './System'
 import { createJWT, readJWT } from '../utils-server'
 import { cloneDeep, isNumber } from 'lodash-es'
-import * as THREE from '../extras/three'
 import { Ranks } from '../extras/ranks'
 import { getServerConfig } from '../../server/config.js'
 
 const serverConfig = getServerConfig()
+const NETWORK_CONFIG = serverConfig.server.network ?? {}
+const REPLICATION_CONFIG = NETWORK_CONFIG.replication ?? {}
+const INTEREST_RADIUS = NETWORK_CONFIG.interestRadius ?? 120
+const REPLICATION_BUDGET = REPLICATION_CONFIG.perTickBudget ?? 48
+const REPLICATION_THROTTLE = REPLICATION_CONFIG.throttleSeconds ?? 0.05
 const SAVE_INTERVAL = serverConfig.server.saveInterval // seconds
 const PUBLIC_CONFIG = serverConfig.public
 const AUTH_CONFIG = serverConfig.auth
@@ -37,6 +41,12 @@ export class ServerNetwork extends System {
     this.dirtyApps = new Set()
     this.isServer = true
     this.queue = []
+    this.interestRadius = INTEREST_RADIUS
+    this.interestRadiusSq = this.interestRadius * this.interestRadius
+    this.replicationBudget = REPLICATION_BUDGET
+    this.replicationThrottle = REPLICATION_THROTTLE
+    this.replicationQueues = new Map()
+    this.replicationLedger = new Map()
   }
 
   init({ db }) {
@@ -79,20 +89,224 @@ export class ServerNetwork extends System {
 
   preFixedUpdate() {
     this.flush()
+    this.flushReplication()
   }
 
   send(name, data, ignoreSocketId) {
-    // console.log('->>>', name, data)
+    const recipients = this.resolveRecipients(name, data, ignoreSocketId)
+    if (!recipients.length) {
+      return
+    }
+
+    if (this.shouldThrottleReplication(name, data)) {
+      const entityId = data?.id
+      const priority = this.getReplicationPriority(name, data)
+      if (!entityId) {
+        const packet = writePacket(name, data)
+        for (const { socket } of recipients) {
+          socket.sendPacket(packet)
+        }
+        return
+      }
+
+      for (const { socket, interest } of recipients) {
+        this.queueReplication(socket, name, entityId, data, priority + interest)
+      }
+      return
+    }
+
     const packet = writePacket(name, data)
-    this.sockets.forEach(socket => {
-      if (socket.id === ignoreSocketId) return
+    for (const { socket } of recipients) {
       socket.sendPacket(packet)
-    })
+    }
   }
 
   sendTo(socketId, name, data) {
     const socket = this.sockets.get(socketId)
     socket?.send(name, data)
+  }
+
+  resolveRecipients(name, data, ignoreSocketId) {
+    const recipients = []
+    this.sockets.forEach(socket => {
+      if (socket.id === ignoreSocketId) return
+      recipients.push({ socket, interest: 0 })
+    })
+
+    if (!recipients.length) {
+      return recipients
+    }
+
+    if (name === 'entityModified') {
+      const entityId = data?.id
+      const entity = entityId ? this.world.entities.get(entityId) : null
+      if (entity?.isPlayer) {
+        const origin = this.resolveEntityPosition(entity, data)
+        if (origin) {
+          for (const recipient of recipients) {
+            recipient.interest = this.getInterestWeight(recipient.socket, origin, entityId)
+          }
+        }
+      }
+    }
+
+    return recipients
+  }
+
+  shouldThrottleReplication(name, data) {
+    if (name !== 'entityModified') return false
+    if (!data || !data.id) return false
+    const entity = this.world.entities.get(data.id)
+    return entity?.isPlayer ?? false
+  }
+
+  getReplicationPriority(name, data) {
+    if (name === 'entityModified') {
+      if (data?.position || data?.quaternion || data?.velocity) {
+        return 3
+      }
+      if (data?.health !== undefined || data?.stats !== undefined) {
+        return 2
+      }
+      return 1
+    }
+    return 0
+  }
+
+  queueReplication(socket, name, entityId, data, priority) {
+    let queue = this.replicationQueues.get(socket.id)
+    if (!queue) {
+      queue = new Map()
+      this.replicationQueues.set(socket.id, queue)
+    }
+
+    const existing = queue.get(entityId)
+    const payload = this.clonePayload(data)
+    const now = this.getTime()
+
+    if (existing) {
+      existing.data = { ...existing.data, ...payload }
+      existing.priority = Math.max(existing.priority, priority)
+      existing.updatedAt = now
+    } else {
+      queue.set(entityId, {
+        entityId,
+        name,
+        data: payload,
+        priority,
+        updatedAt: now,
+      })
+    }
+  }
+
+  flushReplication() {
+    if (!this.replicationQueues.size) return
+    const now = this.getTime()
+
+    for (const [socketId, queue] of this.replicationQueues) {
+      const socket = this.sockets.get(socketId)
+      if (!socket) {
+        this.replicationQueues.delete(socketId)
+        continue
+      }
+
+      if (!queue.size) {
+        this.replicationQueues.delete(socketId)
+        continue
+      }
+
+      const entries = Array.from(queue.values()).sort((a, b) => {
+        if (b.priority !== a.priority) {
+          return b.priority - a.priority
+        }
+        return a.updatedAt - b.updatedAt
+      })
+
+      let sent = 0
+      for (const entry of entries) {
+        const ledgerKey = `${socketId}:${entry.entityId}:${entry.name}`
+        const lastSent = this.replicationLedger.get(ledgerKey) ?? 0
+        if (now - lastSent < this.replicationThrottle) {
+          continue
+        }
+
+        socket.send(entry.name, entry.data)
+        this.replicationLedger.set(ledgerKey, now)
+        queue.delete(entry.entityId)
+        sent++
+
+        if (sent >= this.replicationBudget) {
+          break
+        }
+      }
+
+      if (!queue.size) {
+        this.replicationQueues.delete(socketId)
+      }
+    }
+  }
+
+  clonePayload(data) {
+    if (!data) return data
+    return cloneDeep(data)
+  }
+
+  resolveEntityPosition(entity, patch) {
+    if (!entity) return null
+    return this.normalisePosition(patch?.position) ?? this.normalisePosition(entity.data?.position)
+  }
+
+  normalisePosition(value) {
+    if (!value) return null
+    if (Array.isArray(value)) {
+      if (value.length < 3) return null
+      return [Number(value[0]) || 0, Number(value[1]) || 0, Number(value[2]) || 0]
+    }
+    if (ArrayBuffer.isView(value) && value.length >= 3) {
+      return [Number(value[0]) || 0, Number(value[1]) || 0, Number(value[2]) || 0]
+    }
+    if (typeof value?.toArray === 'function') {
+      const result = [0, 0, 0]
+      value.toArray(result)
+      return result
+    }
+    if (
+      typeof value?.x === 'number' &&
+      typeof value?.y === 'number' &&
+      typeof value?.z === 'number'
+    ) {
+      return [value.x, value.y, value.z]
+    }
+    return null
+  }
+
+  getSocketPosition(socket) {
+    if (!socket?.player) return null
+    return this.normalisePosition(socket.player.data?.position)
+  }
+
+  getInterestWeight(socket, origin, entityId) {
+    if (!socket) return 0
+    if (socket.id === entityId) return 4
+
+    const position = this.getSocketPosition(socket)
+    if (!position) return 1
+
+    const dx = position[0] - origin[0]
+    const dy = position[1] - origin[1]
+    const dz = position[2] - origin[2]
+    const distanceSq = dx * dx + dy * dy + dz * dz
+
+    if (distanceSq <= this.interestRadiusSq) {
+      return 2
+    }
+
+    const farRadiusSq = this.interestRadiusSq * 4
+    if (distanceSq <= farRadiusSq) {
+      return 1
+    }
+
+    return 0
   }
 
   checkSockets() {
@@ -652,6 +866,12 @@ export class ServerNetwork extends System {
   }
 
   onDisconnect = (socket, code) => {
+    this.replicationQueues.delete(socket.id)
+    for (const key of this.replicationLedger.keys()) {
+      if (key.startsWith(`${socket.id}:`)) {
+        this.replicationLedger.delete(key)
+      }
+    }
     this.world.livekit.clearModifiers(socket.id)
     this.world.characters
       .persistFromPlayer(socket.player)
