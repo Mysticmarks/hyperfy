@@ -1,12 +1,14 @@
 import { App } from '../entities/App'
 import { PlayerLocal } from '../entities/PlayerLocal'
 import { PlayerRemote } from '../entities/PlayerRemote'
+import { Companion } from '../entities/Companion'
 import { System } from './System'
 
 const Types = {
   app: App,
   playerLocal: PlayerLocal,
   playerRemote: PlayerRemote,
+  companion: Companion,
 }
 
 /**
@@ -58,7 +60,7 @@ export class Entities extends System {
       this.player = entity
       this.world.emit('player', entity)
     }
-    this.emit('added')
+    this.emit('added', entity)
     return entity
   }
 
@@ -69,7 +71,7 @@ export class Entities extends System {
     entity.destroy()
     this.items.delete(id)
     this.removed.push(id)
-    this.emit('removed')
+    this.emit('removed', entity)
   }
 
   setHot(entity, hot) {

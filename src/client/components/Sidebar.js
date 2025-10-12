@@ -192,18 +192,25 @@ export function Sidebar({ world, ui }) {
             >
               <BookTextIcon size='1.25rem' />
             </Btn> */}
-              <Btn
-                active={activePane === 'apps'}
-                suspended={ui.pane === 'apps' && !activePane}
-                onClick={() => world.ui.togglePane('apps')}
-              >
-                <LayersIcon size='1.25rem' />
-              </Btn>
-              <Btn
-                active={activePane === 'add'}
-                suspended={ui.pane === 'add' && !activePane}
-                onClick={() => world.ui.togglePane('add')}
-              >
+            <Btn
+              active={activePane === 'apps'}
+              suspended={ui.pane === 'apps' && !activePane}
+              onClick={() => world.ui.togglePane('apps')}
+            >
+              <LayersIcon size='1.25rem' />
+            </Btn>
+            <Btn
+              active={activePane === 'companions'}
+              suspended={ui.pane === 'companions' && !activePane}
+              onClick={() => world.ui.togglePane('companions')}
+            >
+              <SparkleIcon size='1.25rem' />
+            </Btn>
+            <Btn
+              active={activePane === 'add'}
+              suspended={ui.pane === 'add' && !activePane}
+              onClick={() => world.ui.togglePane('add')}
+            >
                 <CirclePlusIcon size='1.25rem' />
               </Btn>
             </Section>
@@ -244,6 +251,7 @@ export function Sidebar({ world, ui }) {
         {ui.pane === 'prefs' && <Prefs world={world} hidden={!ui.active} />}
         {ui.pane === 'world' && <World world={world} hidden={!ui.active} />}
         {ui.pane === 'apps' && <Apps world={world} hidden={!ui.active} />}
+        {ui.pane === 'companions' && <CompanionsPane world={world} hidden={!ui.active} />}
         {ui.pane === 'add' && <Add world={world} hidden={!ui.active} />}
         {ui.pane === 'app' && <App key={ui.app.data.id} world={world} hidden={!ui.active} />}
         {ui.pane === 'script' && <Script key={ui.app.data.id} world={world} hidden={!ui.active} />}
@@ -1888,6 +1896,477 @@ function Players({ world, hidden }) {
               )}
             </div>
           ))}
+        </div>
+      </div>
+    </Pane>
+  )
+}
+
+function CompanionsPane({ world, hidden }) {
+  const localPlayer = world.entities.player
+  const { isBuilder } = useRank(world, localPlayer)
+  const [state, setState] = useState(() => world.companions.getState())
+  const [selectedId, setSelectedId] = useState(() => state.registry[0]?.id || null)
+  const [draft, setDraft] = useState(() => (state.registry[0] ? cloneDeep(state.registry[0]) : null))
+  useEffect(() => {
+    const onChange = next => {
+      setState(next)
+    }
+    world.companions.on('change', onChange)
+    return () => {
+      world.companions.off('change', onChange)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedId || !state.registry.find(item => item.id === selectedId)) {
+      setSelectedId(state.registry[0]?.id || null)
+    }
+  }, [state, selectedId])
+
+  useEffect(() => {
+    if (!selectedId) {
+      setDraft(null)
+      return
+    }
+    const selected = state.registry.find(item => item.id === selectedId)
+    setDraft(selected ? cloneDeep(selected) : null)
+  }, [selectedId, state])
+
+  const registry = state.registry
+  const assignments = state.assignments || {}
+
+  const players = useMemo(() => {
+    if (!isBuilder && localPlayer) return [localPlayer]
+    return getPlayers(world)
+  }, [isBuilder, localPlayer, state.assignments])
+
+  const companionOptions = useMemo(() => {
+    return registry.map(item => ({ label: item.name, value: item.id }))
+  }, [registry])
+
+  const handleSelect = id => {
+    setSelectedId(id)
+  }
+
+  const commit = updater => value => {
+    if (!draft) return
+    if (!isBuilder) return
+    setDraft(prev => {
+      if (!prev) return prev
+      const next = cloneDeep(prev)
+      updater(next, value)
+      return next
+    })
+  }
+
+  const save = () => {
+    if (!draft || !isBuilder) return
+    world.companions.update(draft.id, draft)
+  }
+
+  const remove = () => {
+    if (!draft || !isBuilder) return
+    world.companions.remove(draft.id)
+  }
+
+  const setDefault = () => {
+    if (!draft || !isBuilder) return
+    world.companions.update(draft.id, { metadata: { default: true } })
+  }
+
+  const createManual = () => {
+    world.companions.create({ name: 'New Companion' })
+  }
+
+  const generate = () => {
+    world.companions.generate({})
+  }
+
+  const assignPlayer = (playerId, value) => {
+    if (value === '__auto__') {
+      world.companions.assignToPlayer(playerId, null)
+    } else {
+      world.companions.assignToPlayer(playerId, value)
+    }
+  }
+
+  const selected = draft
+
+  return (
+    <Pane hidden={hidden} width='34rem'>
+      <div
+        className='companions'
+        css={css`
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          background: rgba(11, 10, 21, 0.9);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: 1.375rem;
+          overflow: hidden;
+          .companions-head {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+          }
+          .companions-title {
+            flex: 1;
+            font-weight: 500;
+            font-size: 1rem;
+          }
+          .companions-actions {
+            display: flex;
+            gap: 0.5rem;
+            button {
+              height: 2rem;
+              padding: 0 0.9rem;
+              font-size: 0.875rem;
+              border-radius: 1rem;
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              background: rgba(255, 255, 255, 0.05);
+              color: white;
+              cursor: pointer;
+              &:hover {
+                background: rgba(255, 255, 255, 0.1);
+              }
+            }
+          }
+          .companions-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+          }
+          .companions-list {
+            width: 11rem;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            overflow-y: auto;
+          }
+          .companions-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-size: 0.9375rem;
+            border-left: 0.25rem solid transparent;
+            &:hover {
+              background: rgba(255, 255, 255, 0.04);
+            }
+            &.active {
+              border-left-color: rgba(126, 214, 255, 0.9);
+              background: rgba(126, 214, 255, 0.08);
+            }
+          }
+          .companions-detail {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+          }
+          .companions-section {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            .section-title {
+              font-size: 0.8125rem;
+              letter-spacing: 0.05em;
+              text-transform: uppercase;
+              margin-bottom: 0.5rem;
+              color: rgba(255, 255, 255, 0.6);
+            }
+          }
+          .companions-footer {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+          .companions-footer button {
+            height: 2.5rem;
+            border-radius: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            cursor: pointer;
+            font-size: 0.9375rem;
+            &:hover {
+              background: rgba(255, 255, 255, 0.15);
+            }
+            &.danger {
+              background: rgba(255, 90, 90, 0.12);
+              border-color: rgba(255, 90, 90, 0.4);
+              &:hover {
+                background: rgba(255, 90, 90, 0.2);
+              }
+            }
+          }
+        `}
+      >
+        <div className='companions-head'>
+          <div className='companions-title'>AI Companions</div>
+          <div className='companions-actions'>
+            {isBuilder && (
+              <>
+                <button onClick={generate}>Generate</button>
+                <button onClick={createManual}>New Manual</button>
+              </>
+            )}
+          </div>
+        </div>
+        <div className='companions-body'>
+          <div className='companions-list'>
+            {registry.map(item => (
+              <div
+                key={item.id}
+                className={cls('companions-item', { active: item.id === selectedId })}
+                onClick={() => handleSelect(item.id)}
+              >
+                <div>{item.name}</div>
+                {item.metadata?.rarity && (
+                  <div
+                    css={css`
+                      font-size: 0.75rem;
+                      opacity: 0.7;
+                    `}
+                  >
+                    {item.metadata.rarity}
+                  </div>
+                )}
+              </div>
+            ))}
+            {registry.length === 0 && (
+              <div
+                css={css`
+                  padding: 1rem;
+                  font-size: 0.9rem;
+                  opacity: 0.7;
+                `}
+              >
+                No companions yet.
+              </div>
+            )}
+          </div>
+          <div className='companions-detail'>
+            {selected ? (
+              <>
+                <div className='companions-section'>
+                  <div className='section-title'>Identity</div>
+                  <FieldText
+                    label='Name'
+                    value={selected.name || ''}
+                    onChange={commit((next, value) => {
+                      next.name = value
+                    })}
+                  />
+                  <FieldText
+                    label='Title'
+                    value={selected.title || ''}
+                    onChange={commit((next, value) => {
+                      next.title = value
+                    })}
+                  />
+                  <FieldText
+                    label='Archetype'
+                    value={selected.archetype || ''}
+                    onChange={commit((next, value) => {
+                      next.archetype = value
+                    })}
+                  />
+                  <FieldTextarea
+                    label='Persona'
+                    value={selected.persona || ''}
+                    onChange={commit((next, value) => {
+                      next.persona = value
+                    })}
+                  />
+                </div>
+                <div className='companions-section'>
+                  <div className='section-title'>Appearance</div>
+                  <FieldText
+                    label='Model / Avatar'
+                    value={selected.appearance?.url || ''}
+                    onChange={commit((next, value) => {
+                      next.appearance = next.appearance || {}
+                      next.appearance.url = value
+                    })}
+                  />
+                  <FieldNumber
+                    label='Scale'
+                    dp={2}
+                    min={0.1}
+                    max={4}
+                    step={0.1}
+                    value={selected.appearance?.scale ?? 1}
+                    onChange={commit((next, value) => {
+                      next.appearance = next.appearance || {}
+                      next.appearance.scale = value
+                    })}
+                  />
+                </div>
+                <div className='companions-section'>
+                  <div className='section-title'>Behavior</div>
+                  <FieldNumber
+                    label='Follow Distance'
+                    dp={2}
+                    min={0.5}
+                    max={8}
+                    step={0.1}
+                    value={selected.behavior?.followDistance ?? 2.5}
+                    onChange={commit((next, value) => {
+                      next.behavior = next.behavior || {}
+                      next.behavior.followDistance = value
+                    })}
+                  />
+                  <FieldNumber
+                    label='Follow Height'
+                    dp={2}
+                    min={-2}
+                    max={4}
+                    step={0.1}
+                    value={selected.behavior?.followHeight ?? 0}
+                    onChange={commit((next, value) => {
+                      next.behavior = next.behavior || {}
+                      next.behavior.followHeight = value
+                    })}
+                  />
+                  <FieldNumber
+                    label='Speed'
+                    dp={2}
+                    min={1}
+                    max={8}
+                    step={0.1}
+                    value={selected.behavior?.movementSpeed ?? 3}
+                    onChange={commit((next, value) => {
+                      next.behavior = next.behavior || {}
+                      next.behavior.movementSpeed = value
+                    })}
+                  />
+                  <FieldToggle
+                    label='Idle Orbit'
+                    value={selected.behavior?.idleOrbit ?? true}
+                    onChange={commit((next, value) => {
+                      next.behavior = next.behavior || {}
+                      next.behavior.idleOrbit = value
+                    })}
+                  />
+                </div>
+                <div className='companions-section'>
+                  <div className='section-title'>Locomotion</div>
+                  <FieldToggle
+                    label='Walk'
+                    value={selected.locomotion?.walk ?? true}
+                    onChange={commit((next, value) => {
+                      next.locomotion = next.locomotion || {}
+                      next.locomotion.walk = value
+                    })}
+                  />
+                  <FieldToggle
+                    label='Swim'
+                    value={selected.locomotion?.swim ?? false}
+                    onChange={commit((next, value) => {
+                      next.locomotion = next.locomotion || {}
+                      next.locomotion.swim = value
+                    })}
+                  />
+                  <FieldToggle
+                    label='Fly'
+                    value={selected.locomotion?.fly ?? false}
+                    onChange={commit((next, value) => {
+                      next.locomotion = next.locomotion || {}
+                      next.locomotion.fly = value
+                    })}
+                  />
+                  <FieldToggle
+                    label='Hover'
+                    value={selected.locomotion?.hover ?? false}
+                    onChange={commit((next, value) => {
+                      next.locomotion = next.locomotion || {}
+                      next.locomotion.hover = value
+                    })}
+                  />
+                  <FieldToggle
+                    label='Dig'
+                    value={selected.locomotion?.dig ?? false}
+                    onChange={commit((next, value) => {
+                      next.locomotion = next.locomotion || {}
+                      next.locomotion.dig = value
+                    })}
+                  />
+                </div>
+                <div className='companions-section'>
+                  <div className='section-title'>Instructions</div>
+                  <FieldTextarea
+                    label='Chat Style'
+                    value={selected.instructions?.chat || ''}
+                    onChange={commit((next, value) => {
+                      next.instructions = next.instructions || {}
+                      next.instructions.chat = value
+                    })}
+                  />
+                  <FieldTextarea
+                    label='Combat Notes'
+                    value={selected.instructions?.combat || ''}
+                    onChange={commit((next, value) => {
+                      next.instructions = next.instructions || {}
+                      next.instructions.combat = value
+                    })}
+                  />
+                  <FieldTextarea
+                    label='Exploration Notes'
+                    value={selected.instructions?.exploration || ''}
+                    onChange={commit((next, value) => {
+                      next.instructions = next.instructions || {}
+                      next.instructions.exploration = value
+                    })}
+                  />
+                </div>
+              </>
+            ) : (
+              <div
+                css={css`
+                  padding: 1.5rem;
+                  font-size: 0.95rem;
+                  opacity: 0.7;
+                `}
+              >
+                Select a companion to edit.
+              </div>
+            )}
+          </div>
+        </div>
+        <div className='companions-footer'>
+          <div
+            css={css`
+              font-size: 0.8125rem;
+              letter-spacing: 0.05em;
+              text-transform: uppercase;
+              color: rgba(255, 255, 255, 0.6);
+            `}
+          >
+            Assignments
+          </div>
+          {players.map(player => {
+            const value = assignments[player.data.id] || '__auto__'
+            const options = [{ label: 'Auto', value: '__auto__' }, ...companionOptions]
+            return (
+              <FieldSwitch
+                key={player.data.id}
+                label={player.data.name}
+                value={value}
+                options={options}
+                onChange={val => assignPlayer(player.data.id, val)}
+              />
+            )
+          })}
+          {selected && isBuilder && (
+            <>
+              <button onClick={save}>Save Changes</button>
+              <button onClick={setDefault}>Set as Default</button>
+              <button className='danger' onClick={remove}>
+                Remove Companion
+              </button>
+            </>
+          )}
         </div>
       </div>
     </Pane>
