@@ -143,6 +143,9 @@ export class ClientNetwork extends System {
     if (data.companions) {
       this.world.companions.deserialize(data.companions, { broadcast: false })
     }
+    if (data.mounts) {
+      this.world.mounts.deserialize(data.mounts, { broadcast: false })
+    }
     this.world.livekit?.deserialize(data.livekit)
     storage.set('authToken', data.authToken)
   }
@@ -189,6 +192,10 @@ export class ClientNetwork extends System {
 
   onCompanionsState = data => {
     this.world.companions.deserialize(data)
+  }
+
+  onMountsState = data => {
+    this.world.mounts.deserialize(data)
   }
 
   onPlayerTeleport = data => {

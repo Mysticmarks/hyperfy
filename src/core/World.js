@@ -15,6 +15,7 @@ import { Physics } from './systems/Physics'
 import { Stage } from './systems/Stage'
 import { Scripts } from './systems/Scripts'
 import { Companions } from './systems/Companions'
+import { Mounts } from './systems/Mounts'
 import { Players } from './systems/Players'
 
 export class World extends EventEmitter {
@@ -51,6 +52,7 @@ export class World extends EventEmitter {
     this.register('economy', Economy)
     this.register('players', Players)
     this.register('companions', Companions)
+    this.register('mounts', Mounts)
     this.register('physics', Physics)
     this.register('stage', Stage)
   }

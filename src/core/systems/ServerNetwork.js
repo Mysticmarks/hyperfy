@@ -282,6 +282,7 @@ export class ServerNetwork extends System {
       )
 
       this.world.companions.ensureCompanionForPlayer(socket.player.data.id, { broadcast: false })
+      this.world.mounts.ensureMountForPlayer(socket.player.data.id, { broadcast: false })
 
       // send snapshot
       socket.send('snapshot', {
@@ -296,12 +297,14 @@ export class ServerNetwork extends System {
         blueprints: this.world.blueprints.serialize(),
         entities: this.world.entities.serialize(),
         companions: this.world.companions.serializeState(),
+        mounts: this.world.mounts.serializeState(),
         livekit,
         authToken,
         hasAdminCode: AUTH_CONFIG.hasAdminCode,
       })
 
       this.world.companions.broadcastState()
+      this.world.mounts.broadcastState()
 
       this.sockets.set(socket.id, socket)
 
@@ -544,6 +547,34 @@ export class ServerNetwork extends System {
       return console.error('player attempted to assign companion for another player without permission')
     }
     this.world.companions.assign(playerId, templateId)
+  }
+
+  onMountRegistryUpdate = (socket, data) => {
+    if (!socket.player.isBuilder()) {
+      return console.error('player attempted to modify mount registry without builder permission')
+    }
+    if (!data || typeof data !== 'object') return
+    const { op } = data
+    if (op === 'create') {
+      this.world.mounts.createDefinition(data.definition || {})
+    } else if (op === 'update') {
+      if (!data.id) return
+      this.world.mounts.updateDefinition(data.id, data.changes || {})
+    } else if (op === 'remove') {
+      if (!data.id) return
+      this.world.mounts.removeDefinition(data.id)
+    }
+  }
+
+  onMountAssign = (socket, data) => {
+    if (!data || typeof data !== 'object') return
+    let { playerId, templateId } = data
+    if (!playerId || playerId === socket.player.data.id) {
+      playerId = socket.player.data.id
+    } else if (!socket.player.isBuilder()) {
+      return console.error('player attempted to assign mount for another player without permission')
+    }
+    this.world.mounts.assign(playerId, templateId)
   }
 
   onSettingsModified = (socket, data) => {

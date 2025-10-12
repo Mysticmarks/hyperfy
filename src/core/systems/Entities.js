@@ -2,6 +2,7 @@ import { App } from '../entities/App'
 import { PlayerLocal } from '../entities/PlayerLocal'
 import { PlayerRemote } from '../entities/PlayerRemote'
 import { Companion } from '../entities/Companion'
+import { Mount } from '../entities/Mount'
 import { System } from './System'
 
 const Types = {
@@ -9,6 +10,7 @@ const Types = {
   playerLocal: PlayerLocal,
   playerRemote: PlayerRemote,
   companion: Companion,
+  mount: Mount,
 }
 
 /**
