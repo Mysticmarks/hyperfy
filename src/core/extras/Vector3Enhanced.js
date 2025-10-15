@@ -531,13 +531,17 @@ export class Vector3Enhanced {
 
 	}
 
-	// TODO lengthSquared?
+        lengthSq() {
 
-	lengthSq() {
+                return this._x * this._x + this._y * this._y + this._z * this._z;
 
-		return this._x * this._x + this._y * this._y + this._z * this._z;
+        }
 
-	}
+        lengthSquared() {
+
+                return this.lengthSq();
+
+        }
 
 	length() {
 

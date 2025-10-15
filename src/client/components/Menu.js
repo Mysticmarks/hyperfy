@@ -228,6 +228,41 @@ export function MenuItemText({ label, hint, placeholder, value, onChange }) {
   )
 }
 
+export function MenuItemStatic({ label, hint, value }) {
+  const setHint = useContext(MenuContext)
+  return (
+    <div
+      className='menuitemstatic'
+      css={css`
+        display: flex;
+        align-items: center;
+        height: 2.5rem;
+        padding: 0 0.875rem;
+        opacity: 0.7;
+        .menuitemstatic-label {
+          width: 9.4rem;
+          flex-shrink: 0;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+        }
+        .menuitemstatic-value {
+          flex: 1;
+          text-align: right;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+        }
+      `}
+      onPointerEnter={() => setHint(hint)}
+      onPointerLeave={() => setHint(null)}
+    >
+      <div className='menuitemstatic-label'>{label}</div>
+      <div className='menuitemstatic-value'>{value ?? '—'}</div>
+    </div>
+  )
+}
+
 export function MenuItemTextarea({ label, hint, placeholder, value, onChange }) {
   const setHint = useContext(MenuContext)
   const textareaRef = useRef()

@@ -31,6 +31,7 @@ export function CoreUI({ world }) {
   const [disconnected, setDisconnected] = useState(false)
   const [apps, setApps] = useState(false)
   const [kicked, setKicked] = useState(null)
+  const [appControl, setAppControl] = useState(null)
   useEffect(() => {
     world.on('ready', setReady)
     world.on('player', setPlayer)
@@ -42,6 +43,23 @@ export function CoreUI({ world }) {
     world.on('avatar', setAvatar)
     world.on('kick', setKicked)
     world.on('disconnect', setDisconnected)
+    const onAppControl = payload => {
+      if (payload.state === 'active' && payload.entity) {
+        setAppControl({
+          entityId: payload.entity.data.id,
+          name: payload.entity.blueprint?.name || 'App',
+        })
+        return
+      }
+      if (payload.state === 'released') {
+        setAppControl(current => {
+          if (!current) return null
+          if (current.entityId !== payload.entityId) return current
+          return null
+        })
+      }
+    }
+    world.on('app-control', onAppControl)
     return () => {
       world.off('ready', setReady)
       world.off('player', setPlayer)
@@ -53,6 +71,7 @@ export function CoreUI({ world }) {
       world.off('avatar', setAvatar)
       world.off('kick', setKicked)
       world.off('disconnect', setDisconnected)
+      world.off('app-control', onAppControl)
     }
   }, [])
 
@@ -109,7 +128,60 @@ export function CoreUI({ world }) {
       {ready && isTouch && <TouchBtns world={world} />}
       {ready && isTouch && <TouchStick world={world} />}
       {confirm && <Confirm options={confirm} />}
+      {ready && appControl && <AppControlBanner world={world} info={appControl} />}
       <div id='core-ui-portal' />
+    </div>
+  )
+}
+
+function AppControlBanner({ world, info }) {
+  const release = () => {
+    const entity = world.entities.get(info.entityId)
+    entity?.control?.release()
+  }
+  return (
+    <div
+      className='app-control-banner'
+      css={css`
+        position: absolute;
+        bottom: calc(1.5rem + env(safe-area-inset-bottom));
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1.25rem;
+        background: rgba(11, 10, 21, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        pointer-events: auto;
+        box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.35);
+        font-size: 0.95rem;
+        color: white;
+        button {
+          pointer-events: auto;
+          border: none;
+          border-radius: 999px;
+          padding: 0.4rem 0.9rem;
+          font-size: 0.9rem;
+          font-weight: 500;
+          background: rgba(255, 255, 255, 0.15);
+          color: white;
+          transition: background 0.15s ease;
+          &:hover {
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.25);
+          }
+        }
+      `}
+    >
+      <span>
+        {info.name} is using your input.{' '}
+        <strong>Release control</strong> when you are finished.
+      </span>
+      <button type='button' onClick={release}>
+        Release
+      </button>
     </div>
   )
 }

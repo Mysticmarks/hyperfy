@@ -253,8 +253,39 @@ export class Physics extends System {
         }
       }
     }
-    simulationEventCallback.onConstraintBreak = (...args) => {
-      console.error('TODO: onContraintBreak', ...args)
+    simulationEventCallback.onConstraintBreak = (constraintsPtr, count) => {
+      if (!count) return
+      const baseIndex = constraintsPtr >> 2
+      const stride = 6
+      for (let i = 0; i < count; i++) {
+        const idx = baseIndex + i * stride
+        const actor0Ptr = PHYSX.HEAP32[idx + 4]
+        const actor1Ptr = PHYSX.HEAP32[idx + 5]
+        const handleA = actor0Ptr ? this.handles.get(actor0Ptr) : null
+        const handleB = actor1Ptr ? this.handles.get(actor1Ptr) : null
+        if (handleA?.onConstraintBreak) {
+          try {
+            handleA.onConstraintBreak(handleB)
+          } catch (err) {
+            console.error(err)
+          }
+        }
+        if (handleB?.onConstraintBreak) {
+          try {
+            handleB.onConstraintBreak(handleA)
+          } catch (err) {
+            console.error(err)
+          }
+        }
+        const event = {
+          tagA: handleA?.tag ?? null,
+          tagB: handleB?.tag ?? null,
+          playerIdA: handleA?.playerId ?? null,
+          playerIdB: handleB?.playerId ?? null,
+        }
+        this.world.events.emit('constraintBreak', event)
+        this.world.emit('physics-constraint-break', event)
+      }
     }
 
     const sceneDesc = new PHYSX.PxSceneDesc(this.tolerances)
@@ -565,6 +596,18 @@ export class Physics extends System {
       this.materials[id] = material
     }
     return material
+  }
+
+  destroy() {
+    PHYSX.destroy(this.raycastResult)
+    PHYSX.destroy(this.sweepPose)
+    PHYSX.destroy(this.sweepResult)
+    PHYSX.destroy(this.overlapPose)
+    PHYSX.destroy(this.overlapResult)
+    PHYSX.destroy(this.queryFilterData)
+    PHYSX.destroy(this._pv1)
+    PHYSX.destroy(this._pv2)
+    PHYSX.destroy(this.transform)
   }
 }
 

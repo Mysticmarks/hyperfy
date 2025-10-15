@@ -46,6 +46,7 @@ import {
   FieldTextarea,
   FieldToggle,
   FieldVec3,
+  FieldStatic,
 } from './Fields'
 import { HintContext, HintProvider } from './Hint'
 import { useFullscreen } from './useFullscreen'
@@ -94,6 +95,7 @@ export function Sidebar({ world, ui }) {
     }
   }, [])
   const activePane = ui.active ? ui.pane : null
+  const frozen = ui.app?.blueprint?.frozen ?? false
   return (
     <HintProvider>
       <div
@@ -227,6 +229,7 @@ export function Sidebar({ world, ui }) {
               <Btn
                 active={activePane === 'script'}
                 suspended={ui.pane === 'script' && !activePane}
+                disabled={frozen}
                 onClick={() => world.ui.togglePane('script')}
               >
                 <CodeIcon size='1.25rem' />
@@ -241,6 +244,7 @@ export function Sidebar({ world, ui }) {
               <Btn
                 active={activePane === 'meta'}
                 suspended={ui.pane === 'meta' && !activePane}
+                disabled={frozen}
                 onClick={() => world.ui.togglePane('meta')}
               >
                 <TagIcon size='1.25rem' />
@@ -284,7 +288,7 @@ function Section({ active, top, bottom, children }) {
   )
 }
 
-function Btn({ disabled, suspended, active, muted, children, ...props }) {
+function Btn({ disabled, suspended, active, muted, children, onClick, ...props }) {
   return (
     <div
       className={cls('sidebar-btn', { disabled, suspended, active, muted })}
@@ -307,7 +311,7 @@ function Btn({ disabled, suspended, active, muted, children, ...props }) {
           background: white;
         }
         &:hover {
-          cursor: pointer;
+          cursor: ${disabled ? 'default' : 'pointer'};
           color: white;
         }
         &.active {
@@ -324,12 +328,14 @@ function Btn({ disabled, suspended, active, muted, children, ...props }) {
         }
         &.disabled {
           color: rgba(255, 255, 255, 0.3);
+          pointer-events: none;
         }
         &.muted {
           color: #ff4b4b;
         }
       `}
       {...props}
+      onClick={disabled ? undefined : onClick}
     >
       {children}
       <div className='sidebar-btn-dot' />
@@ -1031,7 +1037,7 @@ function App({ world, hidden }) {
       world.blueprints.off('modify', onModify)
     }
   }, [])
-  const frozen = blueprint.frozen // TODO: disable code editor, model change, metadata editing, flag editing etc
+  const frozen = blueprint.frozen
   const download = async () => {
     try {
       const file = await exportApp(app.blueprint, world.loader.loadFile)
@@ -1062,6 +1068,7 @@ function App({ world, hidden }) {
     world.network.send('blueprintModified', { id: blueprint.id, version, model: url })
   }
   const toggleKey = async (key, value) => {
+    if (frozen) return
     value = isBoolean(value) ? value : !blueprint[key]
     if (blueprint[key] === value) return
     const version = blueprint.version + 1
@@ -1069,6 +1076,7 @@ function App({ world, hidden }) {
     world.network.send('blueprintModified', { id: blueprint.id, version, [key]: value })
   }
   const togglePinned = () => {
+    if (frozen) return
     const pinned = !app.data.pinned
     app.data.pinned = pinned
     world.network.send('entityModified', { id: app.data.id, pinned })
@@ -1135,6 +1143,7 @@ function App({ world, hidden }) {
             }
             &.disabled {
               color: #434556;
+              pointer-events: none;
             }
           }
           .app-transforms {
@@ -1193,7 +1202,7 @@ function App({ world, hidden }) {
         {!blueprint.scene && (
           <div className='app-toggles'>
             <div
-              className={cls('app-toggle', { active: blueprint.disabled })}
+              className={cls('app-toggle', { active: blueprint.disabled, disabled: frozen })}
               onClick={() => toggleKey('disabled')}
               onPointerEnter={() => setHint('Disable this app so that it is no longer active in the world.')}
               onPointerLeave={() => setHint(null)}
@@ -1202,7 +1211,7 @@ function App({ world, hidden }) {
               {/* {blueprint.disabled ? <SquareIcon size='1.125rem' /> : <SquareCheckBigIcon size='1.125rem' />} */}
             </div>
             <div
-              className={cls('app-toggle', { active: pinned })}
+              className={cls('app-toggle', { active: pinned, disabled: frozen })}
               onClick={() => togglePinned()}
               onPointerEnter={() => setHint("Pin this app so it can't accidentally be moved.")}
               onPointerLeave={() => setHint(null)}
@@ -1210,7 +1219,7 @@ function App({ world, hidden }) {
               <PinIcon size='1.125rem' />
             </div>
             <div
-              className={cls('app-toggle', { active: blueprint.preload })}
+              className={cls('app-toggle', { active: blueprint.preload, disabled: frozen })}
               onClick={() => toggleKey('preload')}
               onPointerEnter={() => setHint('Preload this app before entering the world.')}
               onPointerLeave={() => setHint(null)}
@@ -1218,7 +1227,7 @@ function App({ world, hidden }) {
               <LoaderPinwheelIcon size='1.125rem' />
             </div>
             <div
-              className={cls('app-toggle', { active: blueprint.unique })}
+              className={cls('app-toggle', { active: blueprint.unique, disabled: frozen })}
               onClick={() => toggleKey('unique')}
               onPointerEnter={() => setHint('Make this app unique so that new duplicates are not linked to this one.')}
               onPointerLeave={() => setHint(null)}
@@ -1228,15 +1237,30 @@ function App({ world, hidden }) {
           </div>
         )}
         <div className='app-content noscrollbar'>
-          {!blueprint.scene && (
-            <div className='app-transforms'>
-              <div className='app-transforms-btn' onClick={() => setTransforms(!transforms)}>
-                <ChevronsUpDownIcon size='1rem' />
-              </div>
-              {transforms && <AppTransformFields app={app} />}
+          {frozen ? (
+            <div
+              className='app-frozen-notice'
+              css={css`
+                padding: 1rem;
+                text-align: center;
+                color: rgba(255, 255, 255, 0.7);
+              `}
+            >
+              This blueprint is frozen. Duplicate it to make changes.
             </div>
+          ) : (
+            <>
+              {!blueprint.scene && (
+                <div className='app-transforms'>
+                  <div className='app-transforms-btn' onClick={() => setTransforms(!transforms)}>
+                    <ChevronsUpDownIcon size='1rem' />
+                  </div>
+                  {transforms && <AppTransformFields app={app} />}
+                </div>
+              )}
+              <AppFields world={world} app={app} blueprint={blueprint} frozen={frozen} />
+            </>
           )}
-          <AppFields world={world} app={app} blueprint={blueprint} />
         </div>
       </div>
     </Pane>
@@ -1335,7 +1359,7 @@ function AppModelBtn({ value, onChange, children }) {
   )
 }
 
-function AppFields({ world, app, blueprint }) {
+function AppFields({ world, app, blueprint, frozen }) {
   const [fields, setFields] = useState(() => app.fields)
   const props = blueprint.props
   useEffect(() => {
@@ -1356,11 +1380,19 @@ function AppFields({ world, app, blueprint }) {
     world.network.send('blueprintModified', { id, version, props: newProps })
   }
   return fields.map(field => (
-    <AppField key={field.key} world={world} props={props} field={field} value={props[field.key]} modify={modify} />
+    <AppField
+      key={field.key}
+      world={world}
+      props={props}
+      field={field}
+      value={props[field.key]}
+      modify={modify}
+      frozen={frozen}
+    />
   ))
 }
 
-function AppField({ world, props, field, value, modify }) {
+function AppField({ world, props, field, value, modify, frozen }) {
   if (field.hidden) {
     return null
   }
@@ -1373,6 +1405,15 @@ function AppField({ world, props, field, value, modify }) {
   }
   if (field.type === 'section') {
     return <Group label={field.label} />
+  }
+  if (frozen) {
+    return (
+      <FieldStatic
+        label={field.label}
+        hint={field.hint}
+        value={formatFieldValue(field, value)}
+      />
+    )
   }
   if (field.type === 'text') {
     return (
@@ -1483,8 +1524,38 @@ function AppField({ world, props, field, value, modify }) {
   return null
 }
 
+function formatFieldValue(field, value) {
+  if (field.type === 'text' || field.type === 'textarea') {
+    return value || '—'
+  }
+  if (field.type === 'number' || field.type === 'range') {
+    return value ?? '—'
+  }
+  if (field.type === 'file') {
+    if (!value) return '—'
+    if (typeof value === 'string') return value
+    if (value?.name) return value.name
+    if (value?.url) return value.url
+    return '—'
+  }
+  if (field.type === 'switch' || field.type === 'dropdown') {
+    const option = field.options?.find(option => option.value === value)
+    return option?.label ?? option?.value ?? '—'
+  }
+  if (field.type === 'toggle') {
+    const truthy = field.trueLabel || 'Yes'
+    const falsy = field.falseLabel || 'No'
+    return value ? truthy : falsy
+  }
+  if (field.type === 'curve') {
+    return value ? 'Custom curve' : 'Not set'
+  }
+  return value ?? '—'
+}
+
 function Script({ world, hidden }) {
   const app = world.ui.state.app
+  const frozen = app.blueprint?.frozen
   const containerRef = useRef()
   const resizeRef = useRef()
   const [handle, setHandle] = useState(null)
@@ -1554,6 +1625,11 @@ function Script({ world, hidden }) {
             cursor: pointer;
             color: white;
           }
+          &.readonly {
+            cursor: default;
+            color: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+          }
         }
         .script-resizer {
           position: absolute;
@@ -1571,11 +1647,26 @@ function Script({ world, hidden }) {
     >
       <div className='script-head'>
         <div className='script-title'>Script: {app.blueprint?.name}</div>
-        <div className='script-btn' onClick={() => handle?.save()}>
+        <div
+          className={cls('script-btn', { readonly: frozen })}
+          onClick={frozen ? undefined : () => handle?.save()}
+        >
           <SaveIcon size='1.125rem' />
         </div>
       </div>
-      <ScriptEditor key={app.data.id} app={app} onHandle={setHandle} />
+      {frozen ? (
+        <div
+          css={css`
+            padding: 1rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+          `}
+        >
+          This blueprint is frozen. Script editing is disabled.
+        </div>
+      ) : (
+        <ScriptEditor key={app.data.id} app={app} onHandle={setHandle} />
+      )}
       <div className='script-resizer' ref={resizeRef} />
     </div>
   )
@@ -1631,6 +1722,7 @@ function Meta({ world, hidden }) {
       world.blueprints.off('modify', onModify)
     }
   }, [])
+  const frozen = blueprint.frozen
   const set = async (key, value) => {
     const version = blueprint.version + 1
     world.blueprints.modify({ id: blueprint.id, version, [key]: value })
@@ -1671,38 +1763,50 @@ function Meta({ world, hidden }) {
           <div className='meta-title'>Metadata</div>
         </div>
         <div className='meta-content noscrollbar'>
-          <FieldText
-            label='Name'
-            hint='The name of this app'
-            value={blueprint.name}
-            onChange={value => set('name', value)}
-          />
-          <FieldFile
-            label='Image'
-            hint='An image/icon for this app'
-            kind='texture'
-            value={blueprint.image}
-            onChange={value => set('image', value)}
-            world={world}
-          />
-          <FieldText
-            label='Author'
-            hint='The name of the author that made this app'
-            value={blueprint.author}
-            onChange={value => set('author', value)}
-          />
-          <FieldText
-            label='URL'
-            hint='A url for this app'
-            value={blueprint.url}
-            onChange={value => set('url', value)}
-          />
-          <FieldTextarea
-            label='Description'
-            hint='A description for this app'
-            value={blueprint.desc}
-            onChange={value => set('desc', value)}
-          />
+          {frozen ? (
+            <>
+              <FieldStatic label='Name' hint='The name of this app' value={blueprint.name} />
+              <FieldStatic label='Image' hint='An image/icon for this app' value={blueprint.image?.url || '—'} />
+              <FieldStatic label='Author' hint='The name of the author that made this app' value={blueprint.author || '—'} />
+              <FieldStatic label='URL' hint='A url for this app' value={blueprint.url || '—'} />
+              <FieldStatic label='Description' hint='A description for this app' value={blueprint.desc || '—'} />
+            </>
+          ) : (
+            <>
+              <FieldText
+                label='Name'
+                hint='The name of this app'
+                value={blueprint.name}
+                onChange={value => set('name', value)}
+              />
+              <FieldFile
+                label='Image'
+                hint='An image/icon for this app'
+                kind='texture'
+                value={blueprint.image}
+                onChange={value => set('image', value)}
+                world={world}
+              />
+              <FieldText
+                label='Author'
+                hint='The name of the author that made this app'
+                value={blueprint.author}
+                onChange={value => set('author', value)}
+              />
+              <FieldText
+                label='URL'
+                hint='A url for this app'
+                value={blueprint.url}
+                onChange={value => set('url', value)}
+              />
+              <FieldTextarea
+                label='Description'
+                hint='A description for this app'
+                value={blueprint.desc}
+                onChange={value => set('desc', value)}
+              />
+            </>
+          )}
         </div>
       </div>
     </Pane>

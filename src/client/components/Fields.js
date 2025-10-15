@@ -79,6 +79,44 @@ export function FieldText({ label, hint, placeholder, value, onChange }) {
   )
 }
 
+export function FieldStatic({ label, hint, value }) {
+  const { setHint } = useContext(HintContext)
+  return (
+    <div
+      className='fieldstatic'
+      css={css`
+        display: flex;
+        align-items: center;
+        height: 2.5rem;
+        padding: 0 1rem;
+        opacity: 0.7;
+        .fieldstatic-label {
+          width: 9.4rem;
+          flex-shrink: 0;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          font-size: 0.9375rem;
+          color: rgba(255, 255, 255, 0.6);
+        }
+        .fieldstatic-value {
+          flex: 1;
+          text-align: right;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          font-size: 0.9375rem;
+        }
+      `}
+      onPointerEnter={() => setHint(hint)}
+      onPointerLeave={() => setHint(null)}
+    >
+      <div className='fieldstatic-label'>{label}</div>
+      <div className='fieldstatic-value'>{value ?? '—'}</div>
+    </div>
+  )
+}
+
 export function FieldTextarea({ label, hint, placeholder, value, onChange }) {
   const { setHint } = useContext(HintContext)
   const textareaRef = useRef()

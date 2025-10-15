@@ -1,5 +1,3 @@
-# TODO
-# - dont show LOD Group option when a child of a LOD Group
 
 bl_info = {
     "name": "Hyperfy",
@@ -644,6 +642,9 @@ class VIEW3D_PT_hyperfy_panel(Panel):
             current_node_type = NODE_NONE
             if "node" in obj:
                 current_node_type = obj["node"]
+
+            parent = obj.parent
+            is_lod_child = parent and "node" in parent and parent["node"] == NODE_LOD
             
             layout.label(text="Node")
             
@@ -679,11 +680,12 @@ class VIEW3D_PT_hyperfy_panel(Panel):
                         row.operator("object.node_type_set", text="Rigidbody", icon='RADIOBUT_OFF').node_type = NODE_RIGIDBODY
 
                 # LOD Group button
-                row = layout.row()
-                if current_node_type == NODE_LOD:
-                    row.operator("object.node_type_set", text="LOD Group", icon='RADIOBUT_ON').node_type = NODE_LOD
-                else:
-                    row.operator("object.node_type_set", text="LOD Group", icon='RADIOBUT_OFF').node_type = NODE_LOD
+                if not is_lod_child:
+                    row = layout.row()
+                    if current_node_type == NODE_LOD:
+                        row.operator("object.node_type_set", text="LOD Group", icon='RADIOBUT_ON').node_type = NODE_LOD
+                    else:
+                        row.operator("object.node_type_set", text="LOD Group", icon='RADIOBUT_OFF').node_type = NODE_LOD
 
                 # Snap Point button
                 row = layout.row()
@@ -766,9 +768,6 @@ class VIEW3D_PT_hyperfy_panel(Panel):
                 op.property_name = "scaleAware"
             
             # Check if object is a child of an LOD node
-            parent = obj.parent
-            is_lod_child = parent and "node" in parent and parent["node"] == NODE_LOD
-            
             # If this is a child of an LOD node, show max distance option
             if is_lod_child:
                 layout.separator()

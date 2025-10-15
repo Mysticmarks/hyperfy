@@ -2,8 +2,8 @@ import * as THREE from 'three'
 import { isString } from 'lodash'
 import { Emotes } from '../core/extras/playerEmotes'
 
-const MAX_UPLOAD_SIZE = 1000000000000 // TODO
-const MAX_UPLOAD_SIZE_LABEL = '1LOLS'
+const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+const MAX_UPLOAD_SIZE_LABEL = '50 MB'
 
 const FOV = 70
 const PLANE_ASPECT_RATIO = 16 / 9
