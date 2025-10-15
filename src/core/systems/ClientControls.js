@@ -51,6 +51,7 @@ export class ClientControls extends System {
     this.actions = []
     this.buttonsDown = new Set()
     this.isUserGesture = false
+    this.lastUserGesture = 0
     this.isMac = /Mac/.test(navigator.platform)
     this.pointer = {
       locked: false,
@@ -320,6 +321,25 @@ export class ClientControls extends System {
     })
   }
 
+  recordUserGesture() {
+    this.lastUserGesture = Date.now()
+  }
+
+  ensureUserGesture(context = 'controls.bind') {
+    if (!isBrowser) return true
+    const now = Date.now()
+    const hasGesture = now - this.lastUserGesture <= 5000
+    if (hasGesture) {
+      return true
+    }
+    const message =
+      context === 'entity.control'
+        ? 'Click or tap in the world before an app can capture controls.'
+        : 'Interact with the world before continuing.'
+    this.world.emit('toast', message)
+    return false
+  }
+
   releaseAllButtons() {
     // release all down buttons because they can get stuck
     for (const control of this.controls) {
@@ -410,6 +430,9 @@ export class ClientControls extends System {
     if (e.defaultPrevented) return
     if (e.repeat) return
     if (this.isInputFocused()) return
+    if (e.isTrusted) {
+      this.recordUserGesture()
+    }
     const code = e.code
     if (code === 'Tab') {
       // prevent default focus switching behavior
@@ -453,6 +476,9 @@ export class ClientControls extends System {
   }
 
   onPointerDown = e => {
+    if (e.isTrusted) {
+      this.recordUserGesture()
+    }
     if (e.isCoreUI) return
     if (e.pointerType === 'touch') {
       e.preventDefault()
@@ -626,6 +652,9 @@ export class ClientControls extends System {
   }
 
   onTouchStart = e => {
+    if (e.isTrusted) {
+      this.recordUserGesture()
+    }
     if (e.isCoreUI) return
     e.preventDefault()
   }

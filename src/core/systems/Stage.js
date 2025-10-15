@@ -286,6 +286,7 @@ class Model {
     this.iMesh.getEntity = this.getEntity.bind(this)
     this.items = [] // { matrix, node }
     this.dirty = true
+    this.missingInstanceWarnings = new Set()
   }
 
   create(node, matrix) {
@@ -373,8 +374,15 @@ class Model {
   }
 
   getEntity(instanceId) {
-    console.warn('TODO: remove if you dont ever see this')
-    return this.items[instanceId]?.node.ctx.entity
+    const item = this.items[instanceId]
+    if (!item) {
+      if (!this.missingInstanceWarnings.has(instanceId)) {
+        this.missingInstanceWarnings.add(instanceId)
+        console.warn(`[Stage] No instanced entity found for index ${instanceId}`)
+      }
+      return null
+    }
+    return item.node.ctx.entity
   }
 
   getTriangles() {

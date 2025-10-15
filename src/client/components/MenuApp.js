@@ -12,6 +12,7 @@ import {
   MenuItemText,
   MenuItemTextarea,
   MenuItemToggle,
+  MenuItemStatic,
   MenuLine,
   MenuSection,
 } from './Menu'
@@ -24,6 +25,7 @@ import { css } from '@firebolt-dev/css'
 export function MenuApp({ world, app, blur }) {
   const [pages, setPages] = useState(() => ['index'])
   const [blueprint, setBlueprint] = useState(app.blueprint)
+  const frozen = blueprint.frozen
   useEffect(() => {
     window.app = app
     const onModify = bp => {
@@ -51,7 +53,7 @@ export function MenuApp({ world, app, blur }) {
   if (page === 'metadata') Page = MenuAppMetadata
   return (
     <Menu title={blueprint.name} blur={blur}>
-      <Page world={world} app={app} blueprint={blueprint} pop={pop} push={push} />
+      <Page world={world} app={app} blueprint={blueprint} frozen={frozen} pop={pop} push={push} />
     </Menu>
   )
 }
@@ -62,9 +64,8 @@ const extToType = {
 }
 const allowedModels = ['glb', 'vrm']
 
-function MenuAppIndex({ world, app, blueprint, pop, push }) {
+function MenuAppIndex({ world, app, blueprint, frozen, pop, push }) {
   const player = world.entities.player
-  const frozen = blueprint.frozen // TODO: disable code editor, model change, metadata editing, flag editing etc
   const changeModel = async file => {
     if (!file) return
     const ext = file.name.split('.').pop().toLowerCase()
@@ -96,8 +97,11 @@ function MenuAppIndex({ world, app, blueprint, pop, push }) {
   }
   return (
     <>
-      <MenuItemFields world={world} app={app} blueprint={blueprint} />
-      {app.fields?.length > 0 && <MenuLine />}
+      {frozen && (
+        <MenuSection label='This blueprint is frozen. Duplicate it to make changes.' />
+      )}
+      <MenuItemFields world={world} app={app} blueprint={blueprint} frozen={frozen} />
+      {app.fields?.length > 0 && !frozen && <MenuLine />}
       {!frozen && (
         <MenuItemFileBtn
           label='Model'
@@ -109,7 +113,9 @@ function MenuAppIndex({ world, app, blueprint, pop, push }) {
       )}
       {!frozen && <MenuItemBtn label='Code' hint='View or edit the code for this app' onClick={world.ui.toggleCode} />}
       {!frozen && <MenuItemBtn label='Flags' hint='View/edit flags for this app' onClick={() => push('flags')} nav />}
-      <MenuItemBtn label='Metadata' hint='View/edit metadata for this app' onClick={() => push('metadata')} nav />
+      {!frozen && (
+        <MenuItemBtn label='Metadata' hint='View/edit metadata for this app' onClick={() => push('metadata')} nav />
+      )}
       <MenuItemBtn label='Download' hint='Download this app as a .hyp file' onClick={download} />
       <MenuItemBtn
         label='Delete'
@@ -123,7 +129,7 @@ function MenuAppIndex({ world, app, blueprint, pop, push }) {
   )
 }
 
-function MenuItemFields({ world, app, blueprint }) {
+function MenuItemFields({ world, app, blueprint, frozen }) {
   const [fields, setFields] = useState(() => app.fields)
   const props = blueprint.props
   useEffect(() => {
@@ -144,11 +150,19 @@ function MenuItemFields({ world, app, blueprint }) {
     world.network.send('blueprintModified', { id, version, props: newProps })
   }
   return fields.map(field => (
-    <MenuItemField key={field.key} world={world} props={props} field={field} value={props[field.key]} modify={modify} />
+    <MenuItemField
+      key={field.key}
+      world={world}
+      props={props}
+      field={field}
+      value={props[field.key]}
+      modify={modify}
+      frozen={frozen}
+    />
   ))
 }
 
-function MenuItemField({ world, props, field, value, modify }) {
+function MenuItemField({ world, props, field, value, modify, frozen }) {
   if (field.hidden) {
     return null
   }
@@ -161,6 +175,15 @@ function MenuItemField({ world, props, field, value, modify }) {
   }
   if (field.type === 'section') {
     return <MenuSection label={field.label} />
+  }
+  if (frozen) {
+    return (
+      <MenuItemStatic
+        label={field.label}
+        hint={field.hint}
+        value={formatFieldValue(field, value, props)}
+      />
+    )
   }
   if (field.type === 'text') {
     return (
@@ -275,7 +298,36 @@ function MenuItemField({ world, props, field, value, modify }) {
   return null
 }
 
-function MenuAppFlags({ world, app, blueprint, pop, push }) {
+function formatFieldValue(field, value, props) {
+  if (field.type === 'text' || field.type === 'textarea') {
+    return value || '—'
+  }
+  if (field.type === 'number' || field.type === 'range') {
+    return value ?? '—'
+  }
+  if (field.type === 'file') {
+    if (!value) return '—'
+    if (typeof value === 'string') return value
+    if (value?.name) return value.name
+    if (value?.url) return value.url
+    return '—'
+  }
+  if (field.type === 'switch' || field.type === 'dropdown') {
+    const option = field.options?.find(option => option.value === value)
+    return option?.label ?? option?.value ?? '—'
+  }
+  if (field.type === 'toggle') {
+    const truthy = field.trueLabel || 'Yes'
+    const falsy = field.falseLabel || 'No'
+    return value ? truthy : falsy
+  }
+  if (field.type === 'curve') {
+    return value ? 'Custom curve' : 'Not set'
+  }
+  return value ?? '—'
+}
+
+function MenuAppFlags({ world, app, blueprint, frozen, pop, push }) {
   const player = world.entities.player
   const toggle = async (key, value) => {
     value = isBoolean(value) ? value : !blueprint[key]
@@ -283,6 +335,20 @@ function MenuAppFlags({ world, app, blueprint, pop, push }) {
     const version = blueprint.version + 1
     world.blueprints.modify({ id: blueprint.id, version, [key]: value })
     world.network.send('blueprintModified', { id: blueprint.id, version, [key]: value })
+  }
+  if (frozen) {
+    return (
+      <>
+        <MenuItemBack hint='Go back to the main app details' onClick={pop} />
+        <MenuItemStatic label='Preload' hint='Preload this app before players enter the world' value={blueprint.preload ? 'Enabled' : 'Disabled'} />
+        <MenuItemStatic label='Lock' hint='Lock the app so that edits are disabled' value={blueprint.locked ? 'Enabled' : 'Disabled'} />
+        <MenuItemStatic
+          label='Unique'
+          hint='When duplicating this app in the world, create a completely new and unique instance with its own separate config'
+          value={blueprint.unique ? 'Enabled' : 'Disabled'}
+        />
+      </>
+    )
   }
   return (
     <>
@@ -309,12 +375,24 @@ function MenuAppFlags({ world, app, blueprint, pop, push }) {
   )
 }
 
-function MenuAppMetadata({ world, app, blueprint, pop, push }) {
+function MenuAppMetadata({ world, app, blueprint, frozen, pop, push }) {
   const player = world.entities.player
   const set = async (key, value) => {
     const version = blueprint.version + 1
     world.blueprints.modify({ id: blueprint.id, version, [key]: value })
     world.network.send('blueprintModified', { id: blueprint.id, version, [key]: value })
+  }
+  if (frozen) {
+    return (
+      <>
+        <MenuItemBack hint='Go back to the main app details' onClick={pop} />
+        <MenuItemStatic label='Name' hint='The name of this app' value={blueprint.name} />
+        <MenuItemStatic label='Image' hint='An image/icon for this app' value={blueprint.image?.url || '—'} />
+        <MenuItemStatic label='Author' hint='The name of the author that made this app' value={blueprint.author || '—'} />
+        <MenuItemStatic label='URL' hint='A url for this app' value={blueprint.url || '—'} />
+        <MenuItemStatic label='Description' hint='A description for this app' value={blueprint.desc || '—'} />
+      </>
+    )
   }
   return (
     <>

@@ -1,9 +1,9 @@
+const isProduction = process.env.NODE_ENV === 'production'
+
 lockdown({
-  // TODO: in production we may want to flip these
-  // but for now this lets us see errors during dev
-  errorTaming: 'unsafe',
-  errorTrapping: 'report',
-  unhandledRejectionTrapping: 'report',
+  errorTaming: isProduction ? 'safe' : 'unsafe',
+  errorTrapping: isProduction ? 'platform' : 'report',
+  unhandledRejectionTrapping: isProduction ? 'platform' : 'report',
 
   //
   // regExpTaming: 'unsafe',

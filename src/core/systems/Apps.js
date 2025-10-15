@@ -369,16 +369,30 @@ export class Apps extends System {
         const node = entity.createNode(name, data)
         return node.getProxy()
       },
-      control(entity, options) {
+      control(entity, options = {}) {
         entity.control?.release()
-        // TODO: only allow on user interaction
-        // TODO: show UI with a button to release()
-        entity.control = world.controls.bind({
-          ...options,
+        const isClient = world.network?.isClient
+        if (isClient && world.controls?.ensureUserGesture) {
+          const allowed = world.controls.ensureUserGesture('entity.control')
+          if (!allowed) {
+            throw new Error('entity.control() must be triggered by a user interaction before binding controls.')
+          }
+        }
+        const { onRelease, ...rest } = options
+        const control = world.controls?.bind({
+          ...rest,
           priority: ControlPriorities.APP,
           object: entity,
+          onRelease: () => {
+            world.emit('app-control', { state: 'released', entityId: entity.data.id })
+            onRelease?.()
+          },
         })
-        return entity.control
+        entity.control = control
+        if (isClient && control) {
+          world.emit('app-control', { state: 'active', entity })
+        }
+        return control
       },
       configure(entity, fnOrArray) {
         if (isArray(fnOrArray)) {
