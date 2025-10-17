@@ -1,17 +1,13 @@
 import { css } from '@firebolt-dev/css'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronUpIcon, LoaderIcon, MessageSquareTextIcon, RefreshCwIcon, SendHorizonalIcon } from 'lucide-react'
-import moment from 'moment'
+import { useEffect, useRef, useState } from 'react'
+import { MessageSquareTextIcon, RefreshCwIcon, SendHorizonalIcon } from 'lucide-react'
 
-// import { CodeEditor } from './CodeEditor'
 import { AvatarPane } from './AvatarPane'
-import { useElemSize } from './useElemSize'
 import { MouseLeftIcon } from './MouseLeftIcon'
 import { MouseRightIcon } from './MouseRightIcon'
 import { MouseWheelIcon } from './MouseWheelIcon'
 import { buttons, propToLabel } from '../../core/extras/buttons'
 import { cls, isTouch } from '../utils'
-import { uuid } from '../../core/utils'
 import { ControlPriorities } from '../../core/extras/ControlPriorities'
 // import { AppsPane } from './AppsPane'
 // import { MenuMain } from './MenuMain'
@@ -22,24 +18,16 @@ import { Sidebar } from './Sidebar'
 export function CoreUI({ world }) {
   const ref = useRef()
   const [ready, setReady] = useState(false)
-  const [player, setPlayer] = useState(() => world.entities.player)
   const [ui, setUI] = useState(world.ui.state)
-  const [menu, setMenu] = useState(null)
   const [confirm, setConfirm] = useState(null)
-  const [code, setCode] = useState(false)
   const [avatar, setAvatar] = useState(null)
   const [disconnected, setDisconnected] = useState(false)
-  const [apps, setApps] = useState(false)
   const [kicked, setKicked] = useState(null)
   const [appControl, setAppControl] = useState(null)
   useEffect(() => {
     world.on('ready', setReady)
-    world.on('player', setPlayer)
     world.on('ui', setUI)
-    world.on('menu', setMenu)
     world.on('confirm', setConfirm)
-    world.on('code', setCode)
-    world.on('apps', setApps)
     world.on('avatar', setAvatar)
     world.on('kick', setKicked)
     world.on('disconnect', setDisconnected)
@@ -62,12 +50,8 @@ export function CoreUI({ world }) {
     world.on('app-control', onAppControl)
     return () => {
       world.off('ready', setReady)
-      world.off('player', setPlayer)
       world.off('ui', setUI)
-      world.off('menu', setMenu)
       world.off('confirm', setConfirm)
-      world.off('code', setCode)
-      world.off('apps', setApps)
       world.off('avatar', setAvatar)
       world.off('kick', setKicked)
       world.off('disconnect', setDisconnected)
@@ -176,8 +160,7 @@ function AppControlBanner({ world, info }) {
       `}
     >
       <span>
-        {info.name} is using your input.{' '}
-        <strong>Release control</strong> when you are finished.
+        {info.name} is using your input. <strong>Release control</strong> when you are finished.
       </span>
       <button type='button' onClick={release}>
         Release
@@ -596,26 +579,14 @@ function MiniMessages({ world }) {
   return <Message msg={msg} />
 }
 
-const MESSAGES_REFRESH_RATE = 30 // every x seconds
-
 function Messages({ world, active }) {
   const initRef = useRef()
   const contentRef = useRef()
   const spacerRef = useRef()
-  // const [now, setNow] = useState(() => moment())
   const [msgs, setMsgs] = useState([])
   useEffect(() => {
     return world.chat.subscribe(setMsgs)
   }, [])
-  // useEffect(() => {
-  //   let timerId
-  //   const updateNow = () => {
-  //     setNow(moment())
-  //     timerId = setTimeout(updateNow, MESSAGES_REFRESH_RATE * 1000)
-  //   }
-  //   timerId = setTimeout(updateNow, MESSAGES_REFRESH_RATE * 1000)
-  //   return () => clearTimeout(timerId)
-  // }, [])
   useEffect(() => {
     if (!msgs.length) return
     const didInit = !initRef.current
@@ -671,27 +642,13 @@ function Messages({ world, active }) {
     >
       <div className='messages-spacer' ref={spacerRef} />
       {msgs.map(msg => (
-        <Message key={msg.id} msg={msg} /*now={now}*/ />
+        <Message key={msg.id} msg={msg} />
       ))}
     </div>
   )
 }
 
-function Message({ msg, now }) {
-  // const timeAgo = useMemo(() => {
-  //   const createdAt = moment(msg.createdAt)
-  //   const age = now.diff(createdAt, 'seconds')
-  //   // up to 10s ago show now
-  //   if (age < 10) return 'now'
-  //   // under a minute show seconds
-  //   if (age < 60) return `${age}s ago`
-  //   // under an hour show minutes
-  //   if (age < 3600) return Math.floor(age / 60) + 'm ago'
-  //   // under a day show hours
-  //   if (age < 86400) return Math.floor(age / 3600) + 'h ago'
-  //   // otherwise show days
-  //   return Math.floor(age / 86400) + 'd ago'
-  // }, [now])
+function Message({ msg }) {
   return (
     <div
       className='message'

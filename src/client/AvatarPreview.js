@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { isString } from 'lodash'
 import { Emotes } from '../core/extras/playerEmotes'
 
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
@@ -10,25 +9,7 @@ const PLANE_ASPECT_RATIO = 16 / 9
 const HDR_URL = '/day2.hdr'
 
 const DEG2RAD = THREE.MathUtils.DEG2RAD
-const RAD2DEG = THREE.MathUtils.RAD2DEG
-
 const v1 = new THREE.Vector3()
-const v2 = new THREE.Vector3()
-const v3 = new THREE.Vector3()
-
-const materialSlots = [
-  'alphaMap',
-  'aoMap',
-  'bumpMap',
-  'displacementMap',
-  'emissiveMap',
-  'envMap',
-  'lightMap',
-  'map',
-  'metalnessMap',
-  'normalMap',
-  'roughnessMap',
-]
 
 let renderer = null // re-use one renderer for this
 function getRenderer() {
@@ -76,7 +57,6 @@ export class AvatarPreview {
   async load(file, url) {
     this.file = file
     this.url = url
-    console.log('file', this.file)
     if (this.file.size > MAX_UPLOAD_SIZE) {
       return { error: `Max file size ${MAX_UPLOAD_SIZE_LABEL}` }
     }
@@ -185,9 +165,9 @@ export class AvatarPreview {
 
     const fov = camera.fov * (Math.PI / 180)
     const fovh = 2 * Math.atan(Math.tan(fov / 2) * camera.aspect)
-    let dx = size.z / 2 + Math.abs(size.x / 2 / Math.tan(fovh / 2))
-    let dy = size.z / 2 + Math.abs(size.y / 2 / Math.tan(fov / 2))
-    let cameraZ = Math.max(dx, dy)
+    const dx = size.z / 2 + Math.abs(size.x / 2 / Math.tan(fovh / 2))
+    const dy = size.z / 2 + Math.abs(size.y / 2 / Math.tan(fov / 2))
+    const cameraZ = Math.max(dx, dy)
 
     camera.position.z = -cameraZ
     camera.rotation.y += 180 * DEG2RAD
@@ -237,8 +217,6 @@ export class AvatarPreview {
   }
 
   resolveInfo() {
-    console.log(this.renderer.info)
-    console.log(this.renderer.info.render.triangles)
     const stats = {}
     // bounds
     const bbox = new THREE.Box3().setFromObject(this.node.instance.raw.scene)
@@ -315,7 +293,6 @@ export class AvatarPreview {
       rank,
       stats,
     }
-    console.log('info', this.info)
   }
 
   determineRank(fn) {
