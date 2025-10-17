@@ -100,7 +100,7 @@ export function AppsPane({ world, close }) {
 function AppsPaneContent({ world, query, refresh, setRefresh }) {
   const [sort, setSort] = useState('count')
   const [asc, setAsc] = useState(false)
-  const [target, setTarget] = useState(null)
+  const [activeItem, setActiveItem] = useState(null)
   const items = useMemo(() => {
     // Use refresh as a memo-buster when manual recomputation is requested.
     void refresh
@@ -177,15 +177,15 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
     return closestEntity
   }
   const toggleTarget = item => {
-    if (target === item) {
+    if (activeItem === item) {
       world.target.hide()
-      setTarget(null)
+      setActiveItem(null)
       return
     }
     const entity = getClosest(item)
     if (!entity) return
     world.target.show(entity.root.position)
-    setTarget(item)
+    setActiveItem(item)
   }
   const inspect = item => {
     const entity = getClosest(item)
@@ -361,7 +361,7 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
       <div className='asettings-rows noscrollbar'>
         {filteredItems.map(item => (
           <div key={item.blueprint.id} className='asettings-row'>
-            <div className='asettings-rowitem name' onClick={() => target(item)}>
+            <div className='asettings-rowitem name' onClick={() => toggleTarget(item)}>
               <span>{item.name}</span>
             </div>
             <div className='asettings-rowitem count'>
@@ -386,7 +386,10 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
               <div className={cls('asettings-action', { red: item.blueprint.disabled })} onClick={() => toggle(item)}>
                 {item.blueprint.disabled ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
               </div>
-              <div className={cls('asettings-action', { active: target === item })} onClick={() => toggleTarget(item)}>
+              <div
+                className={cls('asettings-action', { active: activeItem === item })}
+                onClick={() => toggleTarget(item)}
+              >
                 <CrosshairIcon size={16} />
               </div>
               <div className={'asettings-action'} onClick={() => inspect(item)}>
