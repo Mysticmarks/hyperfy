@@ -1280,7 +1280,6 @@ function AppTransformFields({ app }) {
         bigStep={1}
         value={position}
         onChange={value => {
-          console.log(value)
           setPosition(value)
           app.modify({ position: value })
           app.world.network.send('entityModified', {

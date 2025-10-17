@@ -437,7 +437,7 @@ function createHelper(octree) {
       mesh.geometry.instanceCount--
     } else {
       if (!last) {
-        console.log(
+        console.error(
           'wtf',
           item,
           items.indexOf(item),

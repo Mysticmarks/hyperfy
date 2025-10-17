@@ -653,7 +653,7 @@ function cloneGLB(glb) {
 }
 
 function getSkinnedMeshes(scene) {
-  let meshes = []
+  const meshes = []
   scene.traverse(o => {
     if (o.isSkinnedMesh) {
       meshes.push(o)
@@ -669,7 +669,7 @@ function createCapsule(radius, height) {
   return geometry
 }
 
-let queryParams = {}
+const queryParams = {}
 function getQueryParams(url) {
   if (!queryParams[url]) {
     url = new URL(url)

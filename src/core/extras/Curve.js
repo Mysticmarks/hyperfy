@@ -56,7 +56,7 @@ export class Curve {
     let lo = -1
     let hi = this.keyframes.length
     while (hi - lo > 1) {
-      let mid = Math.round((lo + hi) / 2)
+      const mid = Math.round((lo + hi) / 2)
       if (this.keyframes[mid].time <= t) lo = mid
       else hi = mid
     }

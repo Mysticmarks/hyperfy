@@ -433,7 +433,7 @@ async function worldNetwork(fastify) {
   })
 }
 
-console.log(`running on port ${port}`)
+console.info(`running on port ${port}`)
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

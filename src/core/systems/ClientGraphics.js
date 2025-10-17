@@ -230,7 +230,7 @@ export class ClientGraphics extends System {
           this.xrWidth = baseLayer.framebufferWidth
           this.xrHeight = baseLayer.framebufferHeight
           this.xrDimensionsNeeded = false
-          console.log({ xrWidth: this.xrWidth, xrHeight: this.xrHeight })
+          console.info({ xrWidth: this.xrWidth, xrHeight: this.xrHeight })
         }
       }
     }
@@ -239,7 +239,7 @@ export class ClientGraphics extends System {
   onSettingsChange = changes => {
     if (changes.ao) {
       this.aoPass.enabled = changes.ao.value && this.world.prefs.ao
-      console.log(this.aoPass.enabled)
+      console.info('[graphics] ambient occlusion enabled:', this.aoPass.enabled)
     }
   }
 

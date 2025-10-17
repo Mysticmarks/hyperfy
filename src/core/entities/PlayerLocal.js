@@ -406,7 +406,7 @@ export class PlayerLocal extends Entity {
         origin.y += 0.2
         const hitMask = Layers.environment.group | Layers.prop.group
         const hit = this.world.physics.raycast(origin, DOWN, 2, hitMask)
-        let actor = hit?.handle?.actor || null
+        const actor = hit?.handle?.actor || null
         // if we found a new platform, set it up for tracking
         if (this.platform.actor !== actor) {
           this.platform.actor = actor
@@ -589,8 +589,8 @@ export class PlayerLocal extends Entity {
       // apply drag, orientated to ground normal
       // this prevents ice-skating & yeeting us upward when going up ramps
       const dragCoeff = 10 * delta
-      let perpComponent = v2.copy(this.groundNormal).multiplyScalar(velocity.dot(this.groundNormal))
-      let parallelComponent = v3.copy(velocity).sub(perpComponent)
+      const perpComponent = v2.copy(this.groundNormal).multiplyScalar(velocity.dot(this.groundNormal))
+      const parallelComponent = v3.copy(velocity).sub(perpComponent)
       parallelComponent.multiplyScalar(1 - dragCoeff)
       velocity.copy(parallelComponent.add(perpComponent))
       // cancel out velocity in ground normal direction (up oriented to ground normal)
@@ -1187,7 +1187,6 @@ export class PlayerLocal extends Entity {
       this.data.health = data.health
       this.nametag.health = data.health
       this.world.events.emit('health', { playerId: this.data.id, health: data.health })
-      console.log('modify', data.health)
       // changed = true
     }
     if (data.hasOwnProperty('avatar')) {

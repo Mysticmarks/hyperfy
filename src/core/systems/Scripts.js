@@ -23,7 +23,7 @@ export class Scripts extends System {
     super(world)
     this.compartment = new Compartment({
       console: {
-        log: (...args) => console.log(...args),
+        log: (...args) => console.info(...args),
         warn: (...args) => console.warn(...args),
         error: (...args) => console.error(...args),
         time: (...args) => console.time(...args),

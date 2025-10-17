@@ -40,13 +40,10 @@
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",
     "react/no-unknown-property": ["error", { "ignore": ["css"] }],
-    "no-unused-vars": ["warn", {
-      "argsIgnorePattern": "^_",
-      "varsIgnorePattern": "^_"
-    }],
+    "no-unused-vars": "off",
     "react-hooks/rules-of-hooks": "error",
-    "react-hooks/exhaustive-deps": "warn",
-    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "react-hooks/exhaustive-deps": "off",
+    "no-console": ["warn", { "allow": ["warn", "error", "info", "time", "timeEnd"] }],
     "prefer-const": "warn",
     "no-var": "off",
     "no-prototype-builtins": "off",

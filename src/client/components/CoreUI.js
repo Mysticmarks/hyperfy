@@ -539,7 +539,7 @@ function Chat({ world }) {
               send(e)
             }
           }}
-          onBlur={e => {
+          onBlur={() => {
             if (!isTouch) {
               setActive(false)
             }
