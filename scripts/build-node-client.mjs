@@ -21,49 +21,47 @@ const buildDir = path.join(rootDir, 'build')
  *
  */
 
-let spawn
+const buildOptions = {
+  entryPoints: ['src/node-client/index.js'],
+  outfile: 'build/world-node-client.js',
+  platform: 'node',
+  format: 'esm',
+  bundle: true,
+  treeShaking: true,
+  minify: false,
+  sourcemap: true,
+  packages: 'external',
+  loader: {},
+  plugins: [serverFinalizePlugin()],
+}
 
-{
-  const nodeClientCtx = await esbuild.context({
-    entryPoints: ['src/node-client/index.js'],
-    outfile: 'build/world-node-client.js',
-    platform: 'node',
-    format: 'esm',
-    bundle: true,
-    treeShaking: true,
-    minify: false,
-    sourcemap: true,
-    packages: 'external',
-    loader: {},
-    plugins: [
-      {
-        name: 'server-finalize-plugin',
-        setup(build) {
-          build.onEnd(async result => {
-            // copy over physx js
-            const physxIdlSrc = path.join(rootDir, 'src/core/physx-js-webidl.js')
-            const physxIdlDest = path.join(rootDir, 'build/physx-js-webidl.js')
-            await fs.copy(physxIdlSrc, physxIdlDest)
-            // copy over physx wasm
-            const physxWasmSrc = path.join(rootDir, 'src/core/physx-js-webidl.wasm')
-            const physxWasmDest = path.join(rootDir, 'build/physx-js-webidl.wasm')
-            await fs.copy(physxWasmSrc, physxWasmDest)
-            // start the server or stop here
-            if (dev) {
-              // (re)start server
-              spawn?.kill('SIGTERM')
-              spawn = fork(path.join(rootDir, 'build/world-node-client.js'))
-            } else {
-              process.exit(0)
-            }
-          })
-        },
-      },
-    ],
-  })
-  if (dev) {
-    await nodeClientCtx.watch()
-  } else {
-    await nodeClientCtx.rebuild()
+function serverFinalizePlugin() {
+  let spawn
+  return {
+    name: 'server-finalize-plugin',
+    setup(build) {
+      build.onEnd(async result => {
+        if (result.errors?.length) return
+
+        const physxIdlSrc = path.join(rootDir, 'src/core/physx-js-webidl.js')
+        const physxIdlDest = path.join(rootDir, 'build/physx-js-webidl.js')
+        const physxWasmSrc = path.join(rootDir, 'src/core/physx-js-webidl.wasm')
+        const physxWasmDest = path.join(rootDir, 'build/physx-js-webidl.wasm')
+
+        await Promise.all([fs.copy(physxIdlSrc, physxIdlDest), fs.copy(physxWasmSrc, physxWasmDest)])
+
+        if (dev) {
+          spawn?.kill('SIGTERM')
+          spawn = fork(path.join(rootDir, 'build/world-node-client.js'))
+        }
+      })
+    },
   }
+}
+
+if (dev) {
+  const nodeClientCtx = await esbuild.context(buildOptions)
+  await nodeClientCtx.watch()
+} else {
+  await esbuild.build(buildOptions)
 }
