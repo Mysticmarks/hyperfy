@@ -1,17 +1,13 @@
 import { css } from '@firebolt-dev/css'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   BoxIcon,
   BrickWallIcon,
   CrosshairIcon,
-  EyeIcon,
-  EyeOffIcon,
   FileCode2Icon,
   HardDriveIcon,
   HashIcon,
   OctagonXIcon,
-  Rows3Icon,
-  SettingsIcon,
   TriangleIcon,
 } from 'lucide-react'
 
@@ -30,9 +26,11 @@ export function AppsList({ world, query, perf, refresh, setRefresh }) {
   const [sort, setSort] = useState('count')
   const [asc, setAsc] = useState(false)
   const [target, setTarget] = useState(null)
-  let items = useMemo(() => {
+  const items = useMemo(() => {
+    // Use refresh as a memo-buster when manual recomputation is requested.
+    void refresh
     const itemMap = new Map() // id -> { blueprint, count }
-    let items = []
+    const results = []
     for (const [_, entity] of world.entities.items) {
       if (!entity.isApp) continue
       const blueprint = world.blueprints.get(entity.data.blueprint)
@@ -40,7 +38,7 @@ export function AppsList({ world, query, perf, refresh, setRefresh }) {
       if (!blueprint.model) continue // corrupt app?
       let item = itemMap.get(blueprint.id)
       if (!item) {
-        let count = 0
+        const count = 0
         const type = blueprint.model.endsWith('.vrm') ? 'avatar' : 'model'
         const model = world.loader.get(type, blueprint.model)
         const stats = model?.getStats() || defaultStats
@@ -60,22 +58,22 @@ export function AppsList({ world, query, perf, refresh, setRefresh }) {
         }
         itemMap.set(blueprint.id, item)
       }
-      item.count++
+      item.count += 1
     }
     for (const [_, item] of itemMap) {
-      items.push(item)
+      results.push(item)
     }
-    return items
-  }, [refresh])
-  items = useMemo(() => {
+    return results
+  }, [refresh, world])
+  const normalizedQuery = query ? query.trim().toLowerCase() : ''
+  const filteredItems = useMemo(() => {
     let newItems = items
-    if (query) {
-      query = query.toLowerCase()
-      newItems = newItems.filter(item => item.keywords.includes(query))
+    if (normalizedQuery) {
+      newItems = newItems.filter(item => item.keywords.includes(normalizedQuery))
     }
     newItems = orderBy(newItems, sort, asc ? 'asc' : 'desc')
     return newItems
-  }, [items, sort, asc, query])
+  }, [items, sort, asc, normalizedQuery])
   useEffect(() => {
     function onChange() {
       setRefresh(n => n + 1)
@@ -86,7 +84,7 @@ export function AppsList({ world, query, perf, refresh, setRefresh }) {
       world.entities.off('added', onChange)
       world.entities.off('removed', onChange)
     }
-  }, [])
+  }, [setRefresh, world.entities])
   const reorder = key => {
     if (sort === key) {
       setAsc(!asc)
@@ -97,7 +95,7 @@ export function AppsList({ world, query, perf, refresh, setRefresh }) {
   }
   useEffect(() => {
     return () => world.target.hide()
-  }, [])
+  }, [world.target])
   const getClosest = item => {
     // find closest entity
     const playerPosition = world.rig.position
@@ -313,7 +311,7 @@ export function AppsList({ world, query, perf, refresh, setRefresh }) {
         <div className='appslist-headitem actions' />
       </div>
       <div className='appslist-rows'>
-        {items.map(item => (
+        {filteredItems.map(item => (
           <div key={item.blueprint.id} className='appslist-row'>
             <div className='appslist-rowitem name' onClick={() => inspect(item)}>
               <span>{item.name}</span>

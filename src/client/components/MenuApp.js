@@ -97,9 +97,7 @@ function MenuAppIndex({ world, app, blueprint, frozen, pop, push }) {
   }
   return (
     <>
-      {frozen && (
-        <MenuSection label='This blueprint is frozen. Duplicate it to make changes.' />
-      )}
+      {frozen && <MenuSection label='This blueprint is frozen. Duplicate it to make changes.' />}
       <MenuItemFields world={world} app={app} blueprint={blueprint} frozen={frozen} />
       {app.fields?.length > 0 && !frozen && <MenuLine />}
       {!frozen && (
@@ -177,13 +175,7 @@ function MenuItemField({ world, props, field, value, modify, frozen }) {
     return <MenuSection label={field.label} />
   }
   if (frozen) {
-    return (
-      <MenuItemStatic
-        label={field.label}
-        hint={field.hint}
-        value={formatFieldValue(field, value, props)}
-      />
-    )
+    return <MenuItemStatic label={field.label} hint={field.hint} value={formatFieldValue(field, value, props)} />
   }
   if (field.type === 'text') {
     return (
@@ -340,8 +332,16 @@ function MenuAppFlags({ world, app, blueprint, frozen, pop, push }) {
     return (
       <>
         <MenuItemBack hint='Go back to the main app details' onClick={pop} />
-        <MenuItemStatic label='Preload' hint='Preload this app before players enter the world' value={blueprint.preload ? 'Enabled' : 'Disabled'} />
-        <MenuItemStatic label='Lock' hint='Lock the app so that edits are disabled' value={blueprint.locked ? 'Enabled' : 'Disabled'} />
+        <MenuItemStatic
+          label='Preload'
+          hint='Preload this app before players enter the world'
+          value={blueprint.preload ? 'Enabled' : 'Disabled'}
+        />
+        <MenuItemStatic
+          label='Lock'
+          hint='Lock the app so that edits are disabled'
+          value={blueprint.locked ? 'Enabled' : 'Disabled'}
+        />
         <MenuItemStatic
           label='Unique'
           hint='When duplicating this app in the world, create a completely new and unique instance with its own separate config'
@@ -388,7 +388,11 @@ function MenuAppMetadata({ world, app, blueprint, frozen, pop, push }) {
         <MenuItemBack hint='Go back to the main app details' onClick={pop} />
         <MenuItemStatic label='Name' hint='The name of this app' value={blueprint.name} />
         <MenuItemStatic label='Image' hint='An image/icon for this app' value={blueprint.image?.url || '—'} />
-        <MenuItemStatic label='Author' hint='The name of the author that made this app' value={blueprint.author || '—'} />
+        <MenuItemStatic
+          label='Author'
+          hint='The name of the author that made this app'
+          value={blueprint.author || '—'}
+        />
         <MenuItemStatic label='URL' hint='A url for this app' value={blueprint.url || '—'} />
         <MenuItemStatic label='Description' hint='A description for this app' value={blueprint.desc || '—'} />
       </>

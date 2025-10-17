@@ -2,7 +2,6 @@ import { css } from '@firebolt-dev/css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   BoxIcon,
-  BrickWall,
   BrickWallIcon,
   CrosshairIcon,
   EyeIcon,
@@ -10,15 +9,11 @@ import {
   FileCode2Icon,
   HardDriveIcon,
   HashIcon,
-  LayoutGridIcon,
-  PencilIcon,
   RotateCcwIcon,
   SearchIcon,
   SettingsIcon,
-  TargetIcon,
   TriangleIcon,
   XIcon,
-  ZapIcon,
 } from 'lucide-react'
 
 import { usePane } from './usePane'
@@ -106,16 +101,18 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
   const [sort, setSort] = useState('count')
   const [asc, setAsc] = useState(false)
   const [target, setTarget] = useState(null)
-  let items = useMemo(() => {
+  const items = useMemo(() => {
+    // Use refresh as a memo-buster when manual recomputation is requested.
+    void refresh
     const itemMap = new Map() // id -> { blueprint, count }
-    let items = []
+    const results = []
     for (const [_, entity] of world.entities.items) {
       if (!entity.isApp) continue
       const blueprint = entity.blueprint
       if (!blueprint) continue // still loading?
       let item = itemMap.get(blueprint.id)
       if (!item) {
-        let count = 0
+        const count = 0
         const type = blueprint.model.endsWith('.vrm') ? 'avatar' : 'model'
         const model = world.loader.get(type, blueprint.model)
         if (!model) continue
@@ -136,22 +133,22 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
         }
         itemMap.set(blueprint.id, item)
       }
-      item.count++
+      item.count += 1
     }
     for (const [_, item] of itemMap) {
-      items.push(item)
+      results.push(item)
     }
-    return items
-  }, [refresh])
-  items = useMemo(() => {
+    return results
+  }, [refresh, world])
+  const normalizedQuery = query ? query.trim().toLowerCase() : ''
+  const filteredItems = useMemo(() => {
     let newItems = items
-    if (query) {
-      query = query.toLowerCase()
-      newItems = newItems.filter(item => item.keywords.includes(query))
+    if (normalizedQuery) {
+      newItems = newItems.filter(item => item.keywords.includes(normalizedQuery))
     }
     newItems = orderBy(newItems, sort, asc ? 'asc' : 'desc')
     return newItems
-  }, [items, sort, asc, query])
+  }, [items, sort, asc, normalizedQuery])
   const reorder = key => {
     if (sort === key) {
       setAsc(!asc)
@@ -162,7 +159,7 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
   }
   useEffect(() => {
     return () => world.target.hide()
-  }, [])
+  }, [world.target])
   const getClosest = item => {
     // find closest entity
     const playerPosition = world.rig.position
@@ -362,7 +359,7 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
         <div className='asettings-headitem actions' />
       </div>
       <div className='asettings-rows noscrollbar'>
-        {items.map(item => (
+        {filteredItems.map(item => (
           <div key={item.blueprint.id} className='asettings-row'>
             <div className='asettings-rowitem name' onClick={() => target(item)}>
               <span>{item.name}</span>
