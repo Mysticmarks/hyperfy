@@ -1,5 +1,7 @@
 # Hyperfy ⚡️
 
+[![CI](https://github.com/hyperfy-xyz/hyperfy/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperfy-xyz/hyperfy/actions/workflows/ci.yml)
+
 <div align="center">
   <img src="overview.png" alt="Hyperfy Ecosystem" width="100%" />
   <p>
