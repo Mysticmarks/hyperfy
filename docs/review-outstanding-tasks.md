@@ -23,7 +23,7 @@ The initial backlog identified in the March 2024 pass has been delivered. A fres
 | Asset loading | `src/core/libs/gltfloader/GLTFLoader.js` | Instanced meshes with skinning are rejected, blocking efficient crowds. | Prototype instanced + skinned mesh path, benchmark memory, and gate with feature flag. |
 | Physics teardown | `src/core/systems/Physics.js` | Query results are never destroyed, leaking on world reloads despite earlier cleanup work. | Add explicit `destroy()` calls during `Physics.destroy()` and extend regression tests to cover multiple reloads. |
 | Filter data updates | `src/core/nodes/Controller.js`, `src/core/nodes/Collider.js` | Updating collision filtering requires full node rebuilds. | Support in-place PxFilterData updates and add builder UI affordance. |
-| Node runtime naming | `src/core/createNodeClientWorld.js` | Loader names imply server/client symmetry but diverge in behaviour. | Rename loaders for clarity and update deployment docs/scripts. |
+| Node runtime naming | `src/core/createNodeClientWorld.js` | Loader names imply server/client symmetry but diverge in behaviour. | ✅ Renamed loaders to `BrowserLoader` and `NodeLoader`, aligning terminology with runtime behaviour. |
 | Telemetry UI | `src/core/libs/stats-gl/index.js` | GPU analytics channel uses same colour as WebGL, obscuring context when both enabled. | Pick distinct palette, expose theme token in HUD settings. |
 
 See `docs/todo-roadmap-2024-10.md` for detailed requirements, sequencing, and validation criteria for each item.

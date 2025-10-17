@@ -6,7 +6,7 @@ import { ClientPointer } from './systems/ClientPointer'
 import { ClientPrefs } from './systems/ClientPrefs'
 import { ClientControls } from './systems/ClientControls'
 import { ClientNetwork } from './systems/ClientNetwork'
-import { ClientLoader } from './systems/ClientLoader'
+import { BrowserLoader } from './systems/BrowserLoader'
 import { ClientGraphics } from './systems/ClientGraphics'
 import { ClientEnvironment } from './systems/ClientEnvironment'
 import { ClientAudio } from './systems/ClientAudio'
@@ -30,7 +30,7 @@ export function createClientWorld() {
   world.register('prefs', ClientPrefs)
   world.register('controls', ClientControls)
   world.register('network', ClientNetwork)
-  world.register('loader', ClientLoader)
+  world.register('loader', BrowserLoader)
   world.register('graphics', ClientGraphics)
   world.register('environment', ClientEnvironment)
   world.register('audio', ClientAudio)

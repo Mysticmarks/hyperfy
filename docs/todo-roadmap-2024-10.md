@@ -76,6 +76,8 @@ This roadmap expands the outstanding TODO markers discovered during the October 
 
 ## 5. Runtime Loader Naming & Documentation Cleanup
 
+**Status**: ✅ Completed in this sweep – `ClientLoader` became `BrowserLoader` and `ServerLoader` became `NodeLoader`, with dependent worlds importing the new names.
+
 **Context**: `createNodeClientWorld` registers `ServerLoader` terminology that no longer matches runtime behaviour, confusing new contributors reviewing deployment scripts.
 
 **Goals**
@@ -84,8 +86,8 @@ This roadmap expands the outstanding TODO markers discovered during the October 
 - Ensure CLI output and logs use consistent terminology.
 
 **Acceptance Criteria**
-- Code references the new names without dead imports.
-- Documentation and scripts reflect the updated naming.
+- Code references the new names without dead imports. ✅
+- Documentation and scripts reflect the updated naming. ✅
 - Smoke test `npm run dev` and server boot logs show the new loader names.
 
 **Validation**

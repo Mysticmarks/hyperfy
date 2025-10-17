@@ -378,7 +378,7 @@ class PlayerVoice {
 }
 
 function createPlayerScreen({ world, playerId, targetId, track, participant }) {
-  // NOTE: this follows the same construct in ClientLoader.js -> createVideoFactory
+  // NOTE: this follows the same construct in BrowserLoader.js -> createVideoFactory
   // so that it is automatically compatible with the video node
   const elem = document.createElement('video')
   elem.playsInline = true

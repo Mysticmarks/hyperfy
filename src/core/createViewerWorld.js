@@ -2,7 +2,7 @@ import { World } from './World'
 
 import { Client } from './systems/Client'
 import { ClientPrefs } from './systems/ClientPrefs'
-import { ClientLoader } from './systems/ClientLoader'
+import { BrowserLoader } from './systems/BrowserLoader'
 import { ClientControls } from './systems/ClientControls'
 import { ClientGraphics } from './systems/ClientGraphics'
 import { ClientEnvironment } from './systems/ClientEnvironment'
@@ -14,7 +14,7 @@ export function createViewerWorld() {
   const world = new World()
   world.register('client', Client)
   world.register('prefs', ClientPrefs)
-  world.register('loader', ClientLoader)
+  world.register('loader', BrowserLoader)
   world.register('controls', ClientControls)
   world.register('graphics', ClientGraphics)
   world.register('environment', ClientEnvironment)
