@@ -235,7 +235,7 @@ export class ClientNetwork extends System {
       createdAt: moment().toISOString(),
     })
     this.world.emit('disconnect', code || true)
-    console.log('disconnect', code)
+    console.warn('[network] disconnect', code)
   }
 
   destroy() {

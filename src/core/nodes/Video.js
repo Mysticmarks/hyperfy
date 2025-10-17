@@ -133,8 +133,7 @@ export class Video extends Node {
 
     if (this._visible) {
       // material
-      let material
-      let vidAspect = this.instance?.width / this.instance?.height || this._aspect
+      const vidAspect = this.instance?.width / this.instance?.height || this._aspect
       const uniforms = {
         uMap: { value: null },
         uHasMap: { value: 0 },
@@ -145,7 +144,7 @@ export class Video extends Node {
         uOffset: { value: new THREE.Vector2(0, 0) },
       }
       // const color = this.instance?.ready ? 'white' : this._color
-      material = new CustomShaderMaterial({
+      const material = new CustomShaderMaterial({
         baseMaterial: this._lit ? THREE.MeshStandardMaterial : THREE.MeshBasicMaterial,
         ...(this._lit ? { roughness: 1, metalness: 0 } : {}),
         // color,
@@ -255,7 +254,7 @@ export class Video extends Node {
       if (!this._geometry) {
         let width = this._width
         let height = this._height
-        let preAspect = this._aspect
+        const preAspect = this._aspect
         if (width === null && height === null) {
           height = 0
           width = 0

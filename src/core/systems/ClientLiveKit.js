@@ -412,7 +412,7 @@ function createPlayerScreen({ world, playerId, targetId, track, participant }) {
      * will hit play just until we get the data needed, then pause.
      */
     return new Promise(resolve => {
-      let playing = false
+      const playing = false
       let data = false
       elem.addEventListener(
         'loadeddata',
@@ -424,7 +424,7 @@ function createPlayerScreen({ world, playerId, targetId, track, participant }) {
           // await new Promise(resolve => setTimeout(resolve, 2000))
           width = elem.videoWidth
           height = elem.videoHeight
-          console.log({ width, height })
+          console.info('[livekit] video dimensions', { width, height })
           ready = true
           resolve()
         },
@@ -470,7 +470,7 @@ function createPlayerScreen({ world, playerId, targetId, track, participant }) {
     // document.body.removeChild(elem)
   }
   function destroy() {
-    console.log('destory')
+    console.info('[livekit] destroy stream handle')
     texture.dispose()
     // help to prevent chrome memory leaks
     // see: https://github.com/facebook/react/issues/15583#issuecomment-490912533

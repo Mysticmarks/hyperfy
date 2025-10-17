@@ -7,7 +7,6 @@ import {
   CircleIcon,
   DumbbellIcon,
   EyeIcon,
-  FileCode2Icon,
   FolderIcon,
   MagnetIcon,
   PersonStandingIcon,
@@ -19,7 +18,7 @@ import { hashFile } from '../../core/utils-client'
 import { storage } from '../../core/storage'
 import { cls } from './cls'
 
-export function CodeEditor({ app, blur, onClose }) {
+export function CodeEditor({ app, blur }) {
   const containerRef = useRef()
   const resizeRef = useRef()
   const [nodes, setNodes] = useState(false)
@@ -27,9 +26,7 @@ export function CodeEditor({ app, blur, onClose }) {
     const elem = resizeRef.current
     const container = containerRef.current
     container.style.width = `${storage.get('code-editor-width', 640)}px`
-    let active
     function onPointerDown(e) {
-      active = true
       elem.addEventListener('pointermove', onPointerMove)
       elem.addEventListener('pointerup', onPointerUp)
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -140,7 +137,6 @@ export function CodeEditor({ app, blur, onClose }) {
 function Editor({ app }) {
   const mountRef = useRef()
   const codeRef = useRef()
-  const [editor, setEditor] = useState(null)
   const save = async () => {
     const world = app.world
     const blueprint = app.blueprint
@@ -182,7 +178,7 @@ function Editor({ app }) {
         tabSize: 2,
         insertSpaces: true,
       })
-      editor.onDidChangeModelContent(event => {
+      editor.onDidChangeModelContent(() => {
         codeRef.current = editor.getValue()
       })
       editor.addAction({
@@ -191,7 +187,6 @@ function Editor({ app }) {
         keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
         run: save,
       })
-      setEditor(editor)
     })
     return () => {
       dead = true
@@ -379,7 +374,7 @@ function Nodes({ app }) {
 }
 
 function HierarchyDetail({ label, value, copy }) {
-  let handleCopy = copy ? () => navigator.clipboard.writeText(value) : null
+  const handleCopy = copy ? () => navigator.clipboard.writeText(value) : null
   return (
     <div className='anodes-detail'>
       <div className='anodes-detail-label'>{label}</div>

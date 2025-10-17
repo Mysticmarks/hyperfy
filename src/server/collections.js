@@ -3,7 +3,7 @@ import path from 'path'
 import { importApp } from '../core/extras/appTools'
 
 export async function initCollections({ collectionsDir, assetsDir }) {
-  let folderNames = fs.readdirSync(collectionsDir)
+  const folderNames = fs.readdirSync(collectionsDir)
   folderNames.sort((a, b) => {
     // keep "default" first then sort alphabetically
     if (a === 'default') return -1

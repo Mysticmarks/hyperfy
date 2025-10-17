@@ -604,7 +604,7 @@ export class ClientControls extends System {
       await this.viewport.requestPointerLock()
       return true
     } catch (err) {
-      console.log('pointerlock denied, too quick?')
+      console.warn('pointerlock denied, too quick?')
       return false
     }
   }

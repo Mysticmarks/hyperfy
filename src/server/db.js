@@ -45,7 +45,7 @@ async function migrate(db, worldDir) {
   let version = parseInt(versionRow.value)
   // run missing migrations
   for (let i = version; i < migrations.length; i++) {
-    console.log(`running migration #${i + 1}...`)
+    console.info(`running migration #${i + 1}...`)
     await migrations[i](db, worldDir)
     await db('config')
       .where('key', 'version')
@@ -199,7 +199,7 @@ const migrations = [
   },
   // rename config key to settings
   async db => {
-    let config = await db('config').where('key', 'config').first()
+    const config = await db('config').where('key', 'config').first()
     if (config) {
       const settings = config.value
       await db('config').insert({ key: 'settings', value: settings })

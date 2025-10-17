@@ -71,7 +71,7 @@ export class ServerNetwork extends System {
       this.world.entities.add(data, true)
     }
     // hydrate settings
-    let settingsRow = await this.db('config').where('key', 'settings').first()
+    const settingsRow = await this.db('config').where('key', 'settings').first()
     try {
       const settings = JSON.parse(settingsRow?.value || '{}')
       this.world.settings.deserialize(settings)
@@ -363,8 +363,7 @@ export class ServerNetwork extends System {
         counts.upsertedBlueprints++
         this.dirtyBlueprints.delete(id)
       } catch (err) {
-        console.log(`error saving blueprint: ${blueprint.id}`)
-        console.error(err)
+        console.error(`error saving blueprint: ${blueprint.id}`, err)
       }
     }
     // app entities
@@ -389,8 +388,7 @@ export class ServerNetwork extends System {
           counts.upsertedApps++
           this.dirtyApps.delete(id)
         } catch (err) {
-          console.log(`error saving entity: ${entity.data.id}`)
-          console.error(err)
+          console.error(`error saving entity: ${entity.data.id}`, err)
         }
       } else {
         // it was removed
@@ -402,7 +400,7 @@ export class ServerNetwork extends System {
     // log
     const didSave = counts.upsertedBlueprints > 0 || counts.upsertedApps > 0 || counts.deletedApps > 0
     if (didSave) {
-      console.log(
+      console.info(
         `world saved (${counts.upsertedBlueprints} blueprints, ${counts.upsertedApps} apps, ${counts.deletedApps} apps removed)`
       )
     }
@@ -437,8 +435,8 @@ export class ServerNetwork extends System {
 
       // check connection params
       let authToken = params.authToken
-      let name = params.name
-      let avatar = params.avatar
+      const name = params.name
+      const avatar = params.avatar
 
       // get or create user
       let user
@@ -774,7 +772,8 @@ export class ServerNetwork extends System {
 
   onCompanionAssign = (socket, data) => {
     if (!data || typeof data !== 'object') return
-    let { playerId, templateId } = data
+    let { playerId } = data
+    const { templateId } = data
     if (!playerId || playerId === socket.player.data.id) {
       playerId = socket.player.data.id
     } else if (!socket.player.isBuilder()) {
@@ -802,7 +801,8 @@ export class ServerNetwork extends System {
 
   onMountAssign = (socket, data) => {
     if (!data || typeof data !== 'object') return
-    let { playerId, templateId } = data
+    let { playerId } = data
+    const { templateId } = data
     if (!playerId || playerId === socket.player.data.id) {
       playerId = socket.player.data.id
     } else if (!socket.player.isBuilder()) {

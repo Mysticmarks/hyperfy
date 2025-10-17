@@ -350,11 +350,6 @@ export class ClientBuilder extends System {
       !this.control.shiftLeft.down &&
       (this.control.metaLeft.down || this.control.controlLeft.down)
     ) {
-      console.log('undo', {
-        shiftLeft: this.control.shiftLeft.down,
-        metaLeft: this.control.metaLeft.down,
-        controlLeft: this.control.controlLeft.down,
-      })
       this.undo()
     }
     // translate updates
@@ -398,7 +393,7 @@ export class ClientBuilder extends System {
         this.target.position.copy(camPos).add(camDir.multiplyScalar(this.target.limit))
       }
       // if holding F/C then push or pull
-      let project = this.control.keyF.down ? 1 : this.control.keyC.down ? -1 : null
+      const project = this.control.keyF.down ? 1 : this.control.keyC.down ? -1 : null
       if (project) {
         const multiplier = this.control.shiftLeft.down ? 4 : 1
         this.target.limit += project * PROJECT_SPEED * delta * multiplier
