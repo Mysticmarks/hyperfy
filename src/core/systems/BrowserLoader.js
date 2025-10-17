@@ -16,13 +16,13 @@ import Hls from 'hls.js/dist/hls.js'
 // THREE.Cache.enabled = true
 
 /**
- * Client Loader System
+ * Browser Loader System
  *
  * - Runs on the client
  * - Basic file loader for many different formats, cached.
  *
  */
-export class ClientLoader extends System {
+export class BrowserLoader extends System {
   constructor(world) {
     super(world)
     this.files = new Map()

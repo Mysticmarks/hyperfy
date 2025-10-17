@@ -12,13 +12,13 @@ import { createNode } from '../extras/createNode'
 import { createEmoteFactory } from '../extras/createEmoteFactory'
 
 /**
- * Server Loader System
+ * Node Loader System
  *
  * - Runs on the server
  * - Basic file loader for many different formats, cached.
  *
  */
-export class ServerLoader extends System {
+export class NodeLoader extends System {
   constructor(world) {
     super(world)
     this.promises = new Map()
