@@ -341,26 +341,66 @@ fastify.get('/zones', async (request, reply) => {
 
 fastify.get('/metrics', async (request, reply) => {
   try {
-    const metrics = []
-    for (const [zoneId, zone] of zones) {
-      const stats = await zone.world.monitor.getStats()
-      metrics.push({
-        id: zoneId,
-        label: zone.config.label,
-        players: zone.world.network.sockets.size,
-        frame: zone.world.frame,
-        time: zone.world.time,
-        networkRate: zone.world.networkRate,
-        cpu: stats.currentCPU,
-        maxCPU: stats.maxCPU,
-        memory: stats.currentMemory,
-        maxMemory: stats.maxMemory,
+    const zoneMetrics = await Promise.all(
+      Array.from(zones.entries()).map(async ([zoneId, zone]) => {
+        const stats = await zone.world.monitor.getStats()
+        const expectedTickRate = (() => {
+          const candidate = zone.config.tickRate ?? zone.world.serverTickRate
+          if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) {
+            return candidate
+          }
+          return 30
+        })()
+
+        const issues = []
+        if (stats.ticks.sampleCount > 0) {
+          if (stats.ticks.observedRate > 0 && stats.ticks.observedRate < expectedTickRate * 0.9) {
+            issues.push('tick-rate-degraded')
+          }
+          const frameBudgetMs = 1000 / expectedTickRate
+          if (stats.ticks.maxDurationMs > frameBudgetMs * 2) {
+            issues.push('tick-duration-spike')
+          }
+        }
+        if (stats.eventLoop?.p99Ms && stats.eventLoop.p99Ms > 50) {
+          issues.push('event-loop-lag')
+        }
+        if (stats.currentCPU > stats.maxCPU * 0.9) {
+          issues.push('cpu-saturation')
+        }
+        if (stats.currentMemory > stats.maxMemory * 0.9) {
+          issues.push('memory-pressure')
+        }
+
+        return {
+          id: zoneId,
+          label: zone.config.label,
+          players: zone.world.network.sockets.size,
+          frame: zone.world.frame,
+          time: zone.world.time,
+          networkRate: zone.world.networkRate,
+          cpu: stats.currentCPU,
+          maxCPU: stats.maxCPU,
+          memory: stats.currentMemory,
+          maxMemory: stats.maxMemory,
+          ticks: {
+            expectedRate: expectedTickRate,
+            sampleCount: stats.ticks.sampleCount,
+            windowMs: stats.ticks.windowMs,
+            observedRate: stats.ticks.observedRate,
+            averageDurationMs: stats.ticks.averageDurationMs,
+            maxDurationMs: stats.ticks.maxDurationMs,
+            averageDeltaMs: stats.ticks.averageDeltaMs,
+          },
+          eventLoop: stats.eventLoop,
+          issues,
+        }
       })
-    }
+    )
 
     return reply.code(200).send({
       timestamp: new Date().toISOString(),
-      zones: metrics,
+      zones: zoneMetrics,
     })
   } catch (error) {
     console.error('Metrics endpoint failed:', error)
