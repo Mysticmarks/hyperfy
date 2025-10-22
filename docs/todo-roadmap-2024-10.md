@@ -4,6 +4,8 @@ This roadmap expands the outstanding TODO markers discovered during the October 
 
 ## 1. Avatar Pipeline Consolidation
 
+**Status**: ✅ Completed (Nov 2024)
+
 **Context**: `PlayerLocal` and `createVRMFactory` carry diverging logic for loading VRM avatars, leading to inconsistent humanoid rig resolution and duplicated maintenance. Emote tooling (`createEmoteFactory`) also relies on indirect bone lookup helpers because the VRM metadata is not shared consistently.
 
 **Goals**
@@ -21,6 +23,8 @@ This roadmap expands the outstanding TODO markers discovered during the October 
 - Manual: load a VRM avatar via builder and runtime, confirm emote playback and IK continuity.
 
 ## 2. GLTF Instanced Skinned Mesh Support
+
+**Status**: ✅ Completed (Nov 2024)
 
 **Context**: `GLTFLoader` currently bails when instanced meshes carry skinning data. This blocks efficient crowds or vegetation that relies on armature animation.
 
@@ -40,6 +44,8 @@ This roadmap expands the outstanding TODO markers discovered during the October 
 
 ## 3. Physics Query Resource Teardown
 
+**Status**: ✅ Completed (Nov 2024)
+
 **Context**: `Physics` system still leaves `raycastResult`, `sweepResult`, and `overlapResult` allocations alive during teardown, causing leaks on repeated world reloads.
 
 **Goals**
@@ -57,6 +63,8 @@ This roadmap expands the outstanding TODO markers discovered during the October 
 - Manual: run chrome tracing with repeated reload scenario and confirm no monotonic growth.
 
 ## 4. Collision Filter Hot-Reloading
+
+**Status**: ✅ Completed (Nov 2024)
 
 **Context**: `Controller` and `Collider` nodes currently require full rebuilds when updating filter groups, preventing responsive collision debugging.
 

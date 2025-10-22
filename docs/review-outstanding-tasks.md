@@ -18,11 +18,11 @@ The initial backlog identified in the March 2024 pass has been delivered. A fres
 
 | Area | File / Context | Issue | Next Step |
 | --- | --- | --- | --- |
-| Avatar pipeline | `src/core/entities/PlayerLocal.js`, `src/core/extras/createVRMFactory.js` | Duplicate VRM factory logic drifts across the builder and runtime entry points. | Extract a shared avatar factory module with test coverage for humanoid rig resolution. |
-| VRM bone lookups | `src/core/extras/createEmoteFactory.js` | Emote rigging looks up bones through helper APIs even when VRM exposes them directly. | Switch to VRM native bone maps once shared avatar factory lands. |
-| Asset loading | `src/core/libs/gltfloader/GLTFLoader.js` | Instanced meshes with skinning are rejected, blocking efficient crowds. | Prototype instanced + skinned mesh path, benchmark memory, and gate with feature flag. |
-| Physics teardown | `src/core/systems/Physics.js` | Query results are never destroyed, leaking on world reloads despite earlier cleanup work. | Add explicit `destroy()` calls during `Physics.destroy()` and extend regression tests to cover multiple reloads. |
-| Filter data updates | `src/core/nodes/Controller.js`, `src/core/nodes/Collider.js` | Updating collision filtering requires full node rebuilds. | Support in-place PxFilterData updates and add builder UI affordance. |
+| Avatar pipeline | `src/core/entities/PlayerLocal.js`, `src/core/extras/createVRMFactory.js` | Duplicate VRM factory logic drifts across the builder and runtime entry points. | ✅ Shared avatar context exported via `avatar/createVRMAvatar` and reused by loaders, players, and emote tooling. |
+| VRM bone lookups | `src/core/extras/createEmoteFactory.js` | Emote rigging looks up bones through helper APIs even when VRM exposes them directly. | ✅ Emote conversion now consumes the VRM humanoid bone map provided by the shared avatar factory. |
+| Asset loading | `src/core/libs/gltfloader/GLTFLoader.js` | Instanced meshes with skinning are rejected, blocking efficient crowds. | ✅ `ENABLE_INSTANCED_SKINNING` flag enables instanced skinned mesh decoding; the loader falls back gracefully when disabled. |
+| Physics teardown | `src/core/systems/Physics.js` | Query results are never destroyed, leaking on world reloads despite earlier cleanup work. | ✅ Physics teardown now releases ray/sweep/overlap buffers alongside controller filter callbacks before destroying the scene. |
+| Filter data updates | `src/core/nodes/Controller.js`, `src/core/nodes/Collider.js` | Updating collision filtering requires full node rebuilds. | ✅ Controllers and colliders refresh `PxFilterData` in place, allowing live layer edits without recreation. |
 | Node runtime naming | `src/core/createNodeClientWorld.js` | Loader names imply server/client symmetry but diverge in behaviour. | ✅ Renamed loaders to `BrowserLoader` and `NodeLoader`, aligning terminology with runtime behaviour. |
 | Telemetry UI | `src/core/libs/stats-gl/index.js` | GPU analytics channel uses same colour as WebGL, obscuring context when both enabled. | ✅ Palette tokens shipped with classic/high-contrast options and documented controls (`docs/extras/stats-hud.md`). |
 

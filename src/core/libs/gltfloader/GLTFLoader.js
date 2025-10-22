@@ -9,11 +9,11 @@
  */
 
 import {
-	AnimationClip,
-	Bone,
-	Box3,
-	BufferAttribute,
-	BufferGeometry,
+        AnimationClip,
+        Bone,
+        Box3,
+        BufferAttribute,
+        BufferGeometry,
 	ClampToEdgeWrapping,
 	Color,
 	ColorManagement,
@@ -70,14 +70,16 @@ import {
 	TriangleFanDrawMode,
 	TriangleStripDrawMode,
 	Vector2,
-	Vector3,
-	VectorKeyframeTrack,
-	SRGBColorSpace,
-	InstancedBufferAttribute
+        Vector3,
+        VectorKeyframeTrack,
+        SRGBColorSpace,
+        InstancedBufferAttribute
 } from 'three';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 // HYP_IMPORT_CHANGE
 // import { toTrianglesDrawMode } from '../utils/BufferGeometryUtils.js';
 import { toTrianglesDrawMode } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { ENABLE_INSTANCED_SKINNING } from '../../constants/featureFlags.js';
 
 class GLTFLoader extends Loader {
 
@@ -1766,22 +1768,39 @@ class GLTFMeshGpuInstancing {
 
 		pending.push( this.parser.createNodeMesh( nodeIndex ) );
 
-		return Promise.all( pending ).then( results => {
+                return Promise.all( pending ).then( results => {
 
-			const nodeObject = results.pop();
-			const meshes = nodeObject.isGroup ? nodeObject.children : [ nodeObject ];
-			const count = results[ 0 ].count; // All attribute counts should be same
-			const instancedMeshes = [];
+                        const nodeObject = results.pop();
+                        const meshes = nodeObject.isGroup ? nodeObject.children : [ nodeObject ];
+                        const count = results[ 0 ].count; // All attribute counts should be same
+                        const instancedMeshes = [];
 
-			for ( const mesh of meshes ) {
+                        const hasSkinnedMesh = meshes.some( mesh => mesh.isSkinnedMesh === true );
+                        if ( hasSkinnedMesh && ! ENABLE_INSTANCED_SKINNING ) {
 
-				// Temporal variables
-				const m = new Matrix4();
+                                return nodeObject;
+
+                        }
+
+                        for ( const mesh of meshes ) {
+
+                                // Temporal variables
+                                const m = new Matrix4();
 				const p = new Vector3();
 				const q = new Quaternion();
 				const s = new Vector3( 1, 1, 1 );
 
-				const instancedMesh = new InstancedMesh( mesh.geometry, mesh.material, count );
+                                const isSkinned = mesh.isSkinnedMesh === true;
+
+                                if ( isSkinned ) {
+
+                                        const group = createInstancedSkinnedGroup( mesh, count, attributes, this.parser );
+                                        instancedMeshes.push( group );
+                                        continue;
+
+                                }
+
+                                const instancedMesh = new InstancedMesh( mesh.geometry, mesh.material, count );
 
 				for ( let i = 0; i < count; i ++ ) {
 
@@ -1849,6 +1868,101 @@ class GLTFMeshGpuInstancing {
 		} );
 
 	}
+
+}
+
+function createInstancedSkinnedGroup( mesh, count, attributes, parser ) {
+
+        const group = new Group();
+        const baseGeometry = mesh.geometry;
+        const baseMaterial = mesh.material;
+        const translation = new Vector3();
+        const rotation = new Quaternion();
+        const scale = new Vector3( 1, 1, 1 );
+        const color = new Color();
+
+        for ( let i = 0; i < count; i ++ ) {
+
+                const clone = SkeletonUtils.clone( mesh );
+                clone.geometry = baseGeometry;
+                clone.material = baseMaterial;
+                clone.matrixAutoUpdate = true;
+
+                if ( attributes.TRANSLATION ) {
+
+                        translation.fromBufferAttribute( attributes.TRANSLATION, i );
+
+                } else {
+
+                        translation.set( 0, 0, 0 );
+
+                }
+
+                if ( attributes.ROTATION ) {
+
+                        rotation.fromBufferAttribute( attributes.ROTATION, i );
+
+                } else {
+
+                        rotation.identity();
+
+                }
+
+                if ( attributes.SCALE ) {
+
+                        scale.fromBufferAttribute( attributes.SCALE, i );
+
+                } else {
+
+                        scale.set( 1, 1, 1 );
+
+                }
+
+                clone.matrixAutoUpdate = mesh.matrixAutoUpdate;
+                clone.matrixWorldAutoUpdate = mesh.matrixWorldAutoUpdate;
+                clone.position.copy( translation );
+                clone.quaternion.copy( rotation );
+                clone.scale.copy( scale );
+                clone.updateMatrix();
+                clone.updateMatrixWorld( true );
+                if ( clone.bind && clone.skeleton ) {
+
+                        clone.bind( clone.skeleton, clone.bindMatrix );
+
+                }
+
+                if ( attributes._COLOR_0 && clone.material && clone.material.isMaterial && clone.material.color ) {
+
+                        clone.material = clone.material.clone();
+                        color.fromBufferAttribute( attributes._COLOR_0, i );
+                        clone.material.color.copy( color );
+
+                }
+
+                const instanceAttributes = {};
+                for ( const attributeName in attributes ) {
+
+                        if ( attributeName === 'TRANSLATION' || attributeName === 'ROTATION' || attributeName === 'SCALE' || attributeName === '_COLOR_0' ) continue;
+
+                        const attr = attributes[ attributeName ];
+                        const offset = i * attr.itemSize;
+                        const values = attr.array.slice( offset, offset + attr.itemSize );
+                        instanceAttributes[ attributeName ] = values;
+
+                }
+
+                if ( Object.keys( instanceAttributes ).length > 0 ) {
+
+                        clone.userData.instanceAttributes = instanceAttributes;
+
+                }
+
+                parser.assignFinalMaterial( clone );
+                group.add( clone );
+
+        }
+
+        return group;
 
 }
 

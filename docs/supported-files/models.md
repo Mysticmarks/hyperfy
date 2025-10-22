@@ -16,6 +16,12 @@ When using the same mesh multiple times inside a single model, be sure to use th
 
 This not only reduces the file size of your model, but our engine is able to better optimize and automatically instance those meshes together in a single draw-call for huge performance.
 
+## Instanced Skinned Meshes
+
+- Skinned primitives authored with the `EXT_mesh_gpu_instancing` extension are supported when the `ENABLE_INSTANCED_SKINNING` feature flag is enabled. Set `ENABLE_INSTANCED_SKINNING=true` (or the public equivalent) in the environment to toggle the loader path. 【F:src/core/constants/featureFlags.js†L1-L18】【F:src/core/libs/gltfloader/GLTFLoader.js†L1-L79】
+- With the flag active the loader clones the armature per instance while reusing the original geometry and base material, ensuring bone matrices remain isolated without duplicating buffers. Per-instance colour attributes (`_COLOR_0`) trigger a lightweight material clone so author palettes continue to render correctly. 【F:src/core/libs/gltfloader/GLTFLoader.js†L1718-L1823】
+- When the flag is disabled the loader falls back to a single skinned mesh so you can profile baseline costs before opting into instancing. Use this mode to validate animation budgets or when targeting platforms that cannot afford the additional skeleton updates.
+
 ## LODs
 
 - Add a custom property named `node` with the value `lod` on an Empty or collection root to mark it as an LOD group. The

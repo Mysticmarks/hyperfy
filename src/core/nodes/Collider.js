@@ -97,10 +97,14 @@ export class Collider extends Node {
         this.pmesh.release()
         this.pmesh = null
       }
+      PHYSX.destroy(filterData)
+      PHYSX.destroy(flags)
       return
     }
     this.shape.setQueryFilterData(filterData)
     this.shape.setSimulationFilterData(filterData)
+    PHYSX.destroy(filterData)
+    PHYSX.destroy(flags)
     // const parentWorldScale = _v2
     // this.parent.matrixWorld.decompose(_v1, _q1, parentWorldScale)
     const position = _v1.copy(this.position).multiply(this.parent.scale)
@@ -284,10 +288,9 @@ export class Collider extends Node {
     }
     this._layer = value
     if (this.shape) {
-      // TODO: we could just update the PxFilterData tbh
-      this.needsRebuild = true
-      this.setDirty()
+      this.updateFilterData()
     }
+    this.setDirty()
   }
 
   get staticFriction() {
@@ -442,6 +445,23 @@ export class Collider extends Node {
       this.proxy = proxy
     }
     return this.proxy
+  }
+
+  updateFilterData() {
+    if (!this.shape) return
+    const layer = Layers[this._layer]
+    let pairFlags = PHYSX.PxPairFlagEnum.eNOTIFY_TOUCH_FOUND | PHYSX.PxPairFlagEnum.eNOTIFY_TOUCH_LOST
+    if (!this._trigger) {
+      pairFlags |= PHYSX.PxPairFlagEnum.eNOTIFY_CONTACT_POINTS
+    }
+    const filterData = new PHYSX.PxFilterData(layer.group, layer.mask, pairFlags, 0)
+    this.shape.setQueryFilterData(filterData)
+    this.shape.setSimulationFilterData(filterData)
+    const actor = this.parent?.actor
+    if (actor) {
+      this.ctx.world.physics.scene?.resetFiltering?.(actor, this.shape)
+    }
+    PHYSX.destroy(filterData)
   }
 }
 

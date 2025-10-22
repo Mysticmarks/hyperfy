@@ -7,6 +7,7 @@ import { createNode } from '../extras/createNode'
 import { bindRotations } from '../extras/bindRotations'
 import { simpleCamLerp } from '../extras/simpleCamLerp'
 import { Emotes } from '../extras/playerEmotes'
+import { AvatarModes as Modes } from '../avatar/createVRMAvatar.js'
 import { ControlPriorities } from '../extras/ControlPriorities'
 import { isBoolean, isNumber } from 'lodash-es'
 import { hasRank, Ranks } from '../extras/ranks'
@@ -46,17 +47,6 @@ const m3 = new THREE.Matrix4()
 
 const gazeTiltAngle = 10 * DEG2RAD
 const gazeTiltAxis = new THREE.Vector3(1, 0, 0) // X-axis for pitch
-
-// TODO: de-dup createVRMFactory.js has a copy
-const Modes = {
-  IDLE: 0,
-  WALK: 1,
-  RUN: 2,
-  JUMP: 3,
-  FALL: 4,
-  FLY: 5,
-  TALK: 6,
-}
 
 export class PlayerLocal extends Entity {
   constructor(world, data, local) {
@@ -202,6 +192,7 @@ export class PlayerLocal extends Entity {
           this.nametag.active = true
         }
         this.avatar.visible = !this.firstPerson
+        this.avatar.instance?.setFirstPerson(this.firstPerson)
         this.avatarUrl = avatarUrl
         this.camHeight = this.avatar.height * 0.9
       })
@@ -785,10 +776,12 @@ export class PlayerLocal extends Entity {
       this.cam.zoom = MIN_ZOOM
       this.firstPerson = true
       if (this.avatar) this.avatar.visible = false
+      this.avatar?.instance?.setFirstPerson(true)
     } else if (!shouldBeFirstPerson && this.firstPerson) {
       this.cam.zoom = clamp(this.thirdPersonZoom, MIN_THIRD_PERSON_ZOOM, MAX_ZOOM)
       this.firstPerson = false
       if (this.avatar) this.avatar.visible = true
+      this.avatar?.instance?.setFirstPerson(false)
     }
     if (!this.firstPerson) {
       this.thirdPersonZoom = clamp(this.cam.zoom, MIN_THIRD_PERSON_ZOOM, MAX_ZOOM)

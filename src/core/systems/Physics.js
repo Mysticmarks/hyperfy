@@ -344,6 +344,8 @@ export class Physics extends System {
       return true // for now ALL cct's collide
     }
     this.controllerFilters.mCCTFilterCallback = cctFilterCallback
+    this._controllerFilterCallback = filterCallback
+    this._controllerCCTFilterCallback = cctFilterCallback
   }
 
   start() {
@@ -599,6 +601,24 @@ export class Physics extends System {
   }
 
   destroy() {
+    this.controllerManager?.release?.()
+    this.controllerManager = null
+    if (this.controllerFilters) {
+      if (this.controllerFilters.mFilterData) {
+        PHYSX.destroy(this.controllerFilters.mFilterData)
+        this.controllerFilters.mFilterData = null
+      }
+      PHYSX.destroy(this.controllerFilters)
+      this.controllerFilters = null
+    }
+    if (this._controllerFilterCallback) {
+      PHYSX.destroy(this._controllerFilterCallback)
+      this._controllerFilterCallback = null
+    }
+    if (this._controllerCCTFilterCallback) {
+      PHYSX.destroy(this._controllerCCTFilterCallback)
+      this._controllerCCTFilterCallback = null
+    }
     PHYSX.destroy(this.raycastResult)
     PHYSX.destroy(this.sweepPose)
     PHYSX.destroy(this.sweepResult)
@@ -608,6 +628,8 @@ export class Physics extends System {
     PHYSX.destroy(this._pv1)
     PHYSX.destroy(this._pv2)
     PHYSX.destroy(this.transform)
+    this.scene?.release?.()
+    this.scene = null
   }
 }
 

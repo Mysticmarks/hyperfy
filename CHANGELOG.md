@@ -9,10 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - core: configurable performance stats palette with a high-contrast option and persistent preference toggle
+- core: shared VRM avatar context with TypeScript definitions so builders can author custom rig hooks alongside runtime code【F:src/core/avatar/createVRMAvatar.js†L1-L282】【F:src/core/avatar/createVRMAvatar.d.ts†L1-L44】
+- loader: opt-in instanced skinned mesh decoding guarded by `ENABLE_INSTANCED_SKINNING` for crowds authored with `EXT_mesh_gpu_instancing`【F:src/core/libs/gltfloader/GLTFLoader.js†L1700-L1823】【F:src/core/constants/featureFlags.js†L1-L18】
 
 ### Changed
 
 ### Fixed
+- physics: release PhysX query buffers and refresh controller/collider filter data in place to prevent leaks during zone reloads and simplify collision debugging【F:src/core/systems/Physics.js†L300-L620】【F:src/core/nodes/Controller.js†L1-L213】【F:src/core/nodes/Collider.js†L1-L214】
 
 ## [v0.15.0]
 
