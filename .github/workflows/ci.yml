@@ -30,5 +30,23 @@ jobs:
       - name: Run lint and formatting checks
         run: npm run check
 
+      - name: Prepare test reports directory
+        run: npm run test:prepare
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run smoke tests
+        run: npm run test:smoke
+
+      - name: Run integration scenarios
+        run: npm run test:integration
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-reports
+          path: reports
+
       - name: Build project
         run: npm run build
