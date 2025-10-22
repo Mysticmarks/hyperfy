@@ -6,4 +6,7 @@ localstorage.json
 .notes/
 node_modules/
 build/
+!build/world-node-client.js
+/coverage/
+/reports/
 /world*
