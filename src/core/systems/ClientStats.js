@@ -3,6 +3,7 @@ import { System } from './System'
 import StatsGL from '../libs/stats-gl'
 import Panel from '../libs/stats-gl/panel'
 import { isBoolean } from 'lodash-es'
+import { STATS_PALETTE_DEFAULT } from '../constants/statsPalettes.js'
 
 const PING_RATE = 1 / 2
 
@@ -23,6 +24,7 @@ export class ClientStats extends System {
     this.pingHistory = []
     this.pingHistorySize = 30 // Store the last 30 ping measurements
     this.maxPing = 0.01 // Starting value for max (will be updated)
+    this.currentPalette = STATS_PALETTE_DEFAULT
   }
 
   init({ ui }) {
@@ -47,6 +49,7 @@ export class ClientStats extends System {
     this.active = value
     if (this.active) {
       if (!this.stats) {
+        const palette = this.world.prefs.statsPalette || STATS_PALETTE_DEFAULT
         this.stats = new StatsGL({
           logsPerSecond: 20,
           samplesLog: 100,
@@ -55,15 +58,22 @@ export class ClientStats extends System {
           horizontal: true,
           minimal: false,
           mode: 0,
+          telemetryPalette: palette,
         })
         this.stats.dom.style.zIndex = null
         this.stats.init(this.world.graphics.renderer, false)
-        this.ping = new Panel('PING', '#f00', '#200')
+        const pingColors = this.stats.getTelemetryPanelColors('ping', { palette })
+        this.ping = new Panel('PING', pingColors.fg, pingColors.bg)
         this.stats.addPanel(this.ping, 3)
+        this.currentPalette = palette
+      } else {
+        this.applyStatsPalette(this.world.prefs.statsPalette)
       }
       this.ui.appendChild(this.stats.dom)
     } else {
-      this.ui.removeChild(this.stats.dom)
+      if (this.stats?.dom.parentNode === this.ui) {
+        this.ui.removeChild(this.stats.dom)
+      }
     }
   }
 
@@ -87,6 +97,18 @@ export class ClientStats extends System {
     if (this.active) {
       this.stats.end()
       this.stats.update()
+    }
+  }
+
+  applyStatsPalette(paletteName) {
+    const nextPalette = paletteName || STATS_PALETTE_DEFAULT
+    this.currentPalette = nextPalette
+    if (!this.stats) return
+
+    this.stats.setTelemetryPalette(nextPalette)
+    if (this.ping) {
+      const pingColors = this.stats.getTelemetryPanelColors('ping', { palette: nextPalette })
+      this.ping.setColors(pingColors.fg, pingColors.bg)
     }
   }
 
@@ -141,6 +163,9 @@ export class ClientStats extends System {
   onPrefsChange = changes => {
     if (changes.stats) {
       this.toggle(changes.stats.value)
+    }
+    if (changes.statsPalette) {
+      this.applyStatsPalette(changes.statsPalette.value)
     }
   }
 

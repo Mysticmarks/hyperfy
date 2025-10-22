@@ -13,6 +13,7 @@ import {
 } from './Menu'
 import { usePermissions } from './usePermissions'
 import { useFullscreen } from './useFullscreen'
+import { STATS_PALETTE_OPTIONS } from '../../core/constants/statsPalettes.js'
 
 export function MenuMain({ world }) {
   const [pages, setPages] = useState(() => ['index'])
@@ -65,12 +66,14 @@ function MenuMainUI({ world, pop, push }) {
   const [ui, setUI] = useState(world.prefs.ui)
   const [actions, setActions] = useState(world.prefs.actions)
   const [stats, setStats] = useState(world.prefs.stats)
+  const [statsPalette, setStatsPalette] = useState(world.prefs.statsPalette)
   const { isBuilder } = usePermissions(world)
   useEffect(() => {
     const onChange = changes => {
       if (changes.ui) setUI(changes.ui.value)
       if (changes.actions) setActions(changes.actions.value)
       if (changes.stats) setStats(changes.stats.value)
+      if (changes.statsPalette) setStatsPalette(changes.statsPalette.value)
     }
     world.prefs.on('change', onChange)
     return () => {
@@ -108,6 +111,13 @@ function MenuMainUI({ world, pop, push }) {
         hint='Show or hide performance stats'
         value={world.prefs.stats}
         onChange={stats => world.prefs.setStats(stats)}
+      />
+      <MenuItemSwitch
+        label='Stats Palette'
+        hint='Change the colour palette used by the performance stats overlay'
+        options={STATS_PALETTE_OPTIONS}
+        value={statsPalette}
+        onChange={palette => world.prefs.setStatsPalette(palette)}
       />
     </Menu>
   )

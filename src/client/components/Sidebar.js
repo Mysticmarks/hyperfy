@@ -64,6 +64,7 @@ import { isTouch } from '../utils'
 import { uuid } from '../../core/utils'
 import { useRank } from './useRank'
 import { Ranks } from '../../core/extras/ranks'
+import { STATS_PALETTE_OPTIONS } from '../../core/constants/statsPalettes.js'
 
 const mainSectionPanes = ['prefs']
 const worldSectionPanes = ['world', 'docs', 'apps', 'add']
@@ -467,6 +468,7 @@ function Prefs({ world, hidden }) {
   const [canFullscreen, isFullscreen, toggleFullscreen] = useFullscreen()
   const [actions, setActions] = useState(world.prefs.actions)
   const [stats, setStats] = useState(world.prefs.stats)
+  const [statsPalette, setStatsPalette] = useState(world.prefs.statsPalette)
   const changeName = name => {
     if (!name) return setName(player.data.name)
     player.setName(name)
@@ -502,6 +504,7 @@ function Prefs({ world, hidden }) {
       if (changes.ui) setUI(changes.ui.value)
       if (changes.actions) setActions(changes.actions.value)
       if (changes.stats) setStats(changes.stats.value)
+      if (changes.statsPalette) setStatsPalette(changes.statsPalette.value)
     }
     world.prefs.on('change', onPrefsChange)
     return () => {
@@ -556,6 +559,13 @@ function Prefs({ world, hidden }) {
           onChange={stats => world.prefs.setStats(stats)}
           trueLabel='Visible'
           falseLabel='Hidden'
+        />
+        <FieldSwitch
+          label='Stats Palette'
+          hint='Change the colour palette used by the performance stats overlay'
+          options={STATS_PALETTE_OPTIONS}
+          value={statsPalette}
+          onChange={palette => world.prefs.setStatsPalette(palette)}
         />
         {!isTouch && (
           <FieldBtn

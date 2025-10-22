@@ -3,6 +3,7 @@ import { isBoolean, isNumber } from 'lodash-es'
 import { System } from './System'
 import { storage } from '../storage'
 import { isTouch } from '../../client/utils'
+import { isStatsPalette, STATS_PALETTE_DEFAULT } from '../constants/statsPalettes.js'
 
 /**
  * Client Prefs System
@@ -31,10 +32,15 @@ export class ClientPrefs extends System {
       data.v = 4
       data.shadows = null
     }
+    if (data.v < 5) {
+      data.v = 5
+      data.statsPalette = null
+    }
 
     this.ui = isNumber(data.ui) ? data.ui : isTouch ? 0.9 : 1
     this.actions = isBoolean(data.actions) ? data.actions : true
     this.stats = isBoolean(data.stats) ? data.stats : false
+    this.statsPalette = isStatsPalette(data.statsPalette) ? data.statsPalette : STATS_PALETTE_DEFAULT
     this.dpr = isNumber(data.dpr) ? data.dpr : 1
     this.shadows = data.shadows ? data.shadows : isTouch ? 'low' : 'med' // none, low=1, med=2048cascade, high=4096cascade
     this.postprocessing = isBoolean(data.postprocessing) ? data.postprocessing : true
@@ -71,6 +77,7 @@ export class ClientPrefs extends System {
       ui: this.ui,
       actions: this.actions,
       stats: this.stats,
+      statsPalette: this.statsPalette,
       dpr: this.dpr,
       shadows: this.shadows,
       postprocessing: this.postprocessing,
@@ -93,6 +100,13 @@ export class ClientPrefs extends System {
 
   setStats(value) {
     this.modify('stats', value)
+  }
+
+  setStatsPalette(value) {
+    if (!isStatsPalette(value)) {
+      value = STATS_PALETTE_DEFAULT
+    }
+    this.modify('statsPalette', value)
   }
 
   setDPR(value) {
