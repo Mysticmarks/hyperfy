@@ -20,11 +20,16 @@ import { usePane } from './usePane'
 import { cls } from './cls'
 import { orderBy } from 'lodash-es'
 import { formatBytes } from '../../core/extras/formatBytes'
+import { useFocusTrap } from './useFocusTrap'
+import { useRank } from './useRank'
 
-export function AppsPane({ world, close }) {
+export function AppsPane({ world, close, visible = true }) {
   const paneRef = useRef()
   const headRef = useRef()
   usePane('apps', paneRef, headRef)
+  useFocusTrap(paneRef, { active: visible })
+  const player = world.entities.player
+  const { isBuilder } = useRank(world, player)
   const [query, setQuery] = useState('')
   const [refresh, setRefresh] = useState(0)
   return (
@@ -33,20 +38,27 @@ export function AppsPane({ world, close }) {
       className='apane'
       css={css`
         position: absolute;
-        top: 20px;
-        left: 20px;
-        width: 38rem;
-        background-color: rgba(15, 16, 24, 0.8);
+        top: 0;
+        left: 0;
+        width: min(40rem, calc(100vw - 4rem));
+        background-color: var(--hf-color-surface);
         pointer-events: auto;
         display: flex;
         flex-direction: column;
         font-size: 1rem;
+        border: 1px solid var(--hf-color-border);
+        border-radius: 1rem;
+        box-shadow: var(--hf-shadow-soft);
+        color: var(--hf-color-text);
+        opacity: ${visible ? 1 : 0};
+        transform: translateY(${visible ? '0' : '12px'});
+        transition: opacity 200ms ease, transform 200ms ease;
         .apane-head {
           height: 3.125rem;
-          background: black;
+          background: var(--hf-color-surface-raised);
           display: flex;
           align-items: center;
-          padding: 0 0.8125rem 0 1.25rem;
+          padding: 0 1.25rem;
           &-title {
             font-size: 1.2rem;
             font-weight: 500;
@@ -70,34 +82,53 @@ export function AppsPane({ world, close }) {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--hf-color-text-muted);
+            background: none;
+            border: none;
             &:hover {
               cursor: pointer;
-              color: white;
+              color: var(--hf-color-heading);
             }
           }
         }
       `}
+      role='dialog'
+      aria-modal='true'
+      aria-label='Apps'
+      aria-hidden={!visible}
+      tabIndex={-1}
     >
       <div className='apane-head' ref={headRef}>
         <div className='apane-head-title'>Apps</div>
         <div className='apane-head-search'>
           <SearchIcon size={16} />
-          <input type='text' placeholder='Search' value={query} onChange={e => setQuery(e.target.value)} />
+          <input
+            type='text'
+            placeholder='Search apps'
+            aria-label='Search apps'
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
         </div>
-        <div className='apane-head-btn' onClick={() => setRefresh(n => n + 1)}>
+        <button className='apane-head-btn' type='button' onClick={() => setRefresh(n => n + 1)} aria-label='Refresh list'>
           <RotateCcwIcon size={16} />
-        </div>
-        <div className='apane-head-btn' onClick={close}>
+        </button>
+        <button className='apane-head-btn' type='button' onClick={close} aria-label='Close apps pane'>
           <XIcon size={20} />
-        </div>
+        </button>
       </div>
-      <AppsPaneContent world={world} query={query} refresh={refresh} setRefresh={setRefresh} />
+      <AppsPaneContent
+        world={world}
+        query={query}
+        refresh={refresh}
+        setRefresh={setRefresh}
+        isBuilder={isBuilder}
+      />
     </div>
   )
 }
 
-function AppsPaneContent({ world, query, refresh, setRefresh }) {
+function AppsPaneContent({ world, query, refresh, setRefresh, isBuilder }) {
   const [sort, setSort] = useState('count')
   const [asc, setAsc] = useState(false)
   const [activeItem, setActiveItem] = useState(null)
@@ -177,6 +208,15 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
     return closestEntity
   }
   const toggleTarget = item => {
+    if (!isBuilder) {
+      const message =
+        world.ui?.getLocalizedString?.(
+          'ui.apps.highlight.buildersOnly',
+          'Highlighting apps is available to builders only.'
+        ) || 'Highlighting apps is available to builders only.'
+      world.emit('toast', message)
+      return
+    }
     if (activeItem === item) {
       world.target.hide()
       setActiveItem(null)
@@ -189,8 +229,9 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
   }
   const inspect = item => {
     const entity = getClosest(item)
-    world.ui.setApp(entity)
-    // world.ui.setMenu({ type: 'app', app: entity })
+    if (!entity) return
+    world.ui.toggleApps(false)
+    world.ui.setMenu({ type: 'app', app: entity })
   }
   const toggle = item => {
     const blueprint = world.blueprints.get(item.blueprint.id)
@@ -212,6 +253,9 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
           display: flex;
           align-items: center;
           margin: 0 0 0.3125rem;
+          background: var(--hf-color-surface);
+          border-bottom: 1px solid var(--hf-color-border);
+          padding-bottom: 0.5rem;
         }
         .asettings-headitem {
           font-size: 1rem;
@@ -219,8 +263,17 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
           white-space: nowrap;
           text-overflow: ellipsis;
           overflow: hidden;
+          color: var(--hf-color-text-muted);
+          background: none;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          padding: 0;
+          height: 2rem;
           &.name {
             flex: 1;
+            justify-content: flex-start;
           }
           &.code {
             width: 3rem;
@@ -243,9 +296,10 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
           }
           &:hover:not(.active) {
             cursor: pointer;
+            color: var(--hf-color-heading);
           }
           &.active {
-            color: #4088ff;
+            color: var(--hf-color-primary);
           }
         }
         .asettings-rows {
@@ -257,13 +311,19 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
           display: flex;
           align-items: center;
           margin: 0 0 0.3125rem;
+          border-radius: 0.4rem;
+          &:hover {
+            background: var(--hf-color-surface-hover);
+          }
         }
         .asettings-rowitem {
           font-size: 1rem;
-          color: rgba(255, 255, 255, 0.8);
+          color: var(--hf-color-text);
           white-space: nowrap;
           text-overflow: ellipsis;
           overflow: hidden;
+          display: flex;
+          align-items: center;
           &.name {
             flex: 1;
           }
@@ -290,9 +350,15 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
         }
         .asettings-action {
           margin-left: 0.625rem;
-          color: rgba(255, 255, 255, 0.4);
+          color: var(--hf-color-text-muted);
+          background: none;
+          border: none;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
           &.active {
-            color: #4088ff;
+            color: var(--hf-color-primary);
           }
           &.red {
             color: #fb4848;
@@ -301,67 +367,85 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
             cursor: pointer;
           }
           &:hover:not(.active):not(.red) {
-            color: white;
+            color: var(--hf-color-heading);
           }
         }
       `}
     >
       <div className='asettings-head'>
-        <div
+        <button
+          type='button'
           className={cls('asettings-headitem name', { active: sort === 'name' })}
           onClick={() => reorder('name')}
           title='Name'
         >
           <span>Name</span>
-        </div>
-        <div
+        </button>
+        <button
+          type='button'
           className={cls('asettings-headitem count', { active: sort === 'count' })}
           onClick={() => reorder('count')}
           title='Instances'
         >
           <HashIcon size={16} />
-        </div>
-        <div
+        </button>
+        <button
+          type='button'
           className={cls('asettings-headitem geometries', { active: sort === 'geometries' })}
           onClick={() => reorder('geometries')}
           title='Geometries'
         >
           <BoxIcon size={16} />
-        </div>
-        <div
+        </button>
+        <button
+          type='button'
           className={cls('asettings-headitem triangles', { active: sort === 'triangles' })}
           onClick={() => reorder('triangles')}
           title='Triangles'
         >
           <TriangleIcon size={16} />
-        </div>
-        <div
+        </button>
+        <button
+          type='button'
           className={cls('asettings-headitem textureSize', { active: sort === 'textureBytes' })}
           onClick={() => reorder('textureBytes')}
           title='Texture Memory Size'
         >
           <BrickWallIcon size={16} />
-        </div>
-        <div
+        </button>
+        <button
+          type='button'
           className={cls('asettings-headitem code', { active: sort === 'code' })}
           onClick={() => reorder('code')}
           title='Code'
         >
           <FileCode2Icon size={16} />
-        </div>
-        <div
+        </button>
+        <button
+          type='button'
           className={cls('asettings-headitem fileSize', { active: sort === 'fileBytes' })}
           onClick={() => reorder('fileBytes')}
           title='File Size'
         >
           <HardDriveIcon size={16} />
-        </div>
-        <div className='asettings-headitem actions' />
+        </button>
+        <div className='asettings-headitem actions' aria-hidden='true' />
       </div>
       <div className='asettings-rows noscrollbar'>
         {filteredItems.map(item => (
           <div key={item.blueprint.id} className='asettings-row'>
-            <div className='asettings-rowitem name' onClick={() => toggleTarget(item)}>
+            <div
+              className='asettings-rowitem name'
+              role='button'
+              tabIndex={0}
+              onClick={() => toggleTarget(item)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  toggleTarget(item)
+                }
+              }}
+            >
               <span>{item.name}</span>
             </div>
             <div className='asettings-rowitem count'>
@@ -383,18 +467,30 @@ function AppsPaneContent({ world, query, refresh, setRefresh }) {
               <span>{item.fileSize}</span>
             </div>
             <div className={'asettings-rowitem actions'}>
-              <div className={cls('asettings-action', { red: item.blueprint.disabled })} onClick={() => toggle(item)}>
+              <button
+                type='button'
+                className={cls('asettings-action', { red: item.blueprint.disabled })}
+                onClick={() => toggle(item)}
+                aria-label={item.blueprint.disabled ? 'Enable app' : 'Disable app'}
+              >
                 {item.blueprint.disabled ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
-              </div>
-              <div
+              </button>
+              <button
+                type='button'
                 className={cls('asettings-action', { active: activeItem === item })}
                 onClick={() => toggleTarget(item)}
+                aria-label='Highlight nearest instance'
               >
                 <CrosshairIcon size={16} />
-              </div>
-              <div className={'asettings-action'} onClick={() => inspect(item)}>
+              </button>
+              <button
+                type='button'
+                className={'asettings-action'}
+                onClick={() => inspect(item)}
+                aria-label='Inspect app'
+              >
                 <SettingsIcon size={16} />
-              </div>
+              </button>
             </div>
           </div>
         ))}

@@ -1,5 +1,5 @@
 import { css } from '@firebolt-dev/css'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MessageSquareTextIcon, RefreshCwIcon, SendHorizonalIcon } from 'lucide-react'
 
 import { AvatarPane } from './AvatarPane'
@@ -9,11 +9,12 @@ import { MouseWheelIcon } from './MouseWheelIcon'
 import { buttons, propToLabel } from '../../core/extras/buttons'
 import { cls, isTouch } from '../utils'
 import { ControlPriorities } from '../../core/extras/ControlPriorities'
-// import { AppsPane } from './AppsPane'
-// import { MenuMain } from './MenuMain'
-// import { MenuApp } from './MenuApp'
+import { AppsPane } from './AppsPane'
+import { MenuMain } from './MenuMain'
+import { MenuApp } from './MenuApp'
 import { ChevronDoubleUpIcon, HandIcon } from './Icons'
 import { Sidebar } from './Sidebar'
+import { applyThemeFromPrefs, watchSystemTheme } from './theme'
 
 export function CoreUI({ world }) {
   const ref = useRef()
@@ -24,6 +25,38 @@ export function CoreUI({ world }) {
   const [disconnected, setDisconnected] = useState(false)
   const [kicked, setKicked] = useState(null)
   const [appControl, setAppControl] = useState(null)
+  const [appsMounted, setAppsMounted] = useState(() => world.ui.state.apps ?? false)
+  const [menuMounted, setMenuMounted] = useState(() => Boolean(world.ui.state.menu))
+  const queuePrefTelemetry = useMemo(() => {
+    let pendingKeys = new Set()
+    let scheduled = false
+    let frameStart = 0
+    return keys => {
+      if (Array.isArray(keys)) {
+        for (const key of keys) {
+          if (key) pendingKeys.add(key)
+        }
+      } else if (keys) {
+        pendingKeys.add(keys)
+      }
+      if (scheduled) return
+      scheduled = true
+      frameStart = performance.now()
+      requestAnimationFrame(() => {
+        const duration = performance.now() - frameStart
+        const payload = Array.from(pendingKeys)
+        pendingKeys = new Set()
+        scheduled = false
+        if (!payload.length) return
+        world.emit('telemetry', {
+          source: 'ui',
+          event: 'prefs-change-applied',
+          keys: payload,
+          duration,
+        })
+      })
+    }
+  }, [world])
   useEffect(() => {
     world.on('ready', setReady)
     world.on('ui', setUI)
@@ -60,6 +93,24 @@ export function CoreUI({ world }) {
   }, [])
 
   useEffect(() => {
+    if (ui.apps) {
+      setAppsMounted(true)
+      return
+    }
+    const timeout = setTimeout(() => setAppsMounted(false), 220)
+    return () => clearTimeout(timeout)
+  }, [ui.apps])
+
+  useEffect(() => {
+    if (ui.menu) {
+      setMenuMounted(true)
+      return
+    }
+    const timeout = setTimeout(() => setMenuMounted(false), 220)
+    return () => clearTimeout(timeout)
+  }, [ui.menu])
+
+  useEffect(() => {
     const elem = ref.current
     const onEvent = e => {
       e.isCoreUI = true
@@ -74,17 +125,72 @@ export function CoreUI({ world }) {
     // elem.addEventListener('touchend', onEvent)
   }, [])
   useEffect(() => {
-    document.documentElement.style.fontSize = `${16 * world.prefs.ui}px`
+    const applyScale = () => {
+      document.documentElement.style.fontSize = `${16 * world.prefs.ui}px`
+    }
+    applyScale()
     function onChange(changes) {
+      const keys = Object.keys(changes)
       if (changes.ui) {
-        document.documentElement.style.fontSize = `${16 * world.prefs.ui}px`
+        applyScale()
+      }
+      if (keys.length) {
+        queuePrefTelemetry(keys)
       }
     }
     world.prefs.on('change', onChange)
     return () => {
       world.prefs.off('change', onChange)
     }
-  }, [])
+  }, [world, queuePrefTelemetry])
+
+  useEffect(() => {
+    const applyTheme = () => {
+      const start = performance.now()
+      const { themeMode } = applyThemeFromPrefs(world.prefs)
+      requestAnimationFrame(() => {
+        const duration = performance.now() - start
+        world.emit('telemetry', {
+          source: 'ui',
+          event: 'theme-applied',
+          mode: themeMode,
+          duration,
+        })
+      })
+    }
+    applyTheme()
+    const onChange = changes => {
+      if (changes.themeMode || changes.themeHuePrimary || changes.themeHueNeutral) {
+        applyTheme()
+      }
+    }
+    const offSystem = watchSystemTheme(() => {
+      if (world.prefs.themeMode === 'system') {
+        applyTheme()
+      }
+    })
+    world.prefs.on('change', onChange)
+    return () => {
+      world.prefs.off('change', onChange)
+      offSystem()
+    }
+  }, [world])
+
+  useEffect(() => {
+    const entries = []
+    const onTelemetry = payload => {
+      entries.push({ timestamp: Date.now(), ...payload })
+      if (entries.length > 250) {
+        entries.shift()
+      }
+    }
+    world.on('telemetry', onTelemetry)
+    world.telemetry = { entries }
+    return () => {
+      world.off('telemetry', onTelemetry)
+      delete world.telemetry
+    }
+  }, [world])
   return (
     <div
       ref={ref}
@@ -106,13 +212,86 @@ export function CoreUI({ world }) {
         <CodeEditor key={`code-${menu.app.data.id}`} world={world} app={menu.app} blur={menu.blur} />
       )} */}
       {avatar && <AvatarPane key={avatar.hash} world={world} info={avatar} />}
-      {/* {apps && <AppsPane world={world} close={() => world.ui.toggleApps()} />} */}
+      {appsMounted && (
+        <div
+          className='coreui-appspane'
+          css={css`
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: calc(1.5rem + env(safe-area-inset-top)) calc(1.5rem + env(safe-area-inset-right))
+              calc(1.5rem + env(safe-area-inset-bottom)) calc(1.5rem + env(safe-area-inset-left));
+            pointer-events: ${ui.apps ? 'auto' : 'none'};
+            transition: opacity 200ms ease;
+            opacity: ${ui.apps ? 1 : 0};
+            z-index: 4;
+          `}
+          aria-hidden={!ui.apps}
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) {
+              world.ui.toggleApps(false)
+            }
+          }}
+        >
+          <AppsPane world={world} close={() => world.ui.toggleApps(false)} visible={ui.apps} />
+        </div>
+      )}
       {!ready && <LoadingOverlay world={world} />}
       {kicked && <KickedOverlay code={kicked} />}
       {ready && isTouch && <TouchBtns world={world} />}
       {ready && isTouch && <TouchStick world={world} />}
       {confirm && <Confirm options={confirm} />}
       {ready && appControl && <AppControlBanner world={world} info={appControl} />}
+      {menuMounted && (
+        <div
+          className='coreui-menu'
+          css={css`
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: ${ui.menu ? 'auto' : 'none'};
+            z-index: 6;
+          `}
+          aria-hidden={!ui.menu}
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) {
+              world.ui.setMenu(null)
+            }
+          }}
+        >
+          <div
+            css={css`
+              position: absolute;
+              inset: 0;
+              background: ${ui.menu ? 'rgba(4, 6, 11, 0.62)' : 'rgba(4, 6, 11, 0)'};
+              backdrop-filter: blur(${ui.menu ? '16px' : '0px'});
+              transition: opacity 220ms ease, backdrop-filter 220ms ease;
+              opacity: ${ui.menu ? 1 : 0};
+              pointer-events: none;
+            `}
+          />
+          <div
+            css={css`
+              position: relative;
+              pointer-events: auto;
+              opacity: ${ui.menu ? 1 : 0};
+              transform: translateY(${ui.menu ? '0' : '8px'});
+              transition: opacity 220ms ease, transform 220ms ease;
+              max-height: calc(100% - 4rem);
+              max-width: min(42rem, calc(100% - 4rem));
+            `}
+          >
+            {ui.menu?.type === 'main' && <MenuMain world={world} page={ui.menu.page} />}
+            {ui.menu?.type === 'app' && ui.menu.app && (
+              <MenuApp world={world} app={ui.menu.app} blur={ui.menu.blur} />
+            )}
+          </div>
+        </div>
+      )}
       <div id='core-ui-portal' />
     </div>
   )
@@ -135,13 +314,13 @@ function AppControlBanner({ world, info }) {
         align-items: center;
         gap: 0.75rem;
         padding: 0.75rem 1.25rem;
-        background: rgba(11, 10, 21, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--hf-color-surface-raised);
+        border: 1px solid var(--hf-color-border);
         border-radius: 999px;
         pointer-events: auto;
-        box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.35);
+        box-shadow: var(--hf-shadow-soft);
         font-size: 0.95rem;
-        color: white;
+        color: var(--hf-color-text);
         button {
           pointer-events: auto;
           border: none;
@@ -149,12 +328,13 @@ function AppControlBanner({ world, info }) {
           padding: 0.4rem 0.9rem;
           font-size: 0.9rem;
           font-weight: 500;
-          background: rgba(255, 255, 255, 0.15);
-          color: white;
-          transition: background 0.15s ease;
+          background: var(--hf-color-primary-soft);
+          color: var(--hf-color-heading);
+          transition: background 0.15s ease, color 0.15s ease;
           &:hover {
             cursor: pointer;
-            background: rgba(255, 255, 255, 0.25);
+            background: var(--hf-color-primary);
+            color: hsl(0 0% 100%);
           }
         }
       `}

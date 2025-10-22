@@ -10,13 +10,17 @@ import {
   MenuItemText,
   MenuItemTextarea,
   MenuItemToggle,
+  MenuItemStatic,
 } from './Menu'
 import { usePermissions } from './usePermissions'
 import { useFullscreen } from './useFullscreen'
 import { STATS_PALETTE_OPTIONS } from '../../core/constants/statsPalettes.js'
 
-export function MenuMain({ world }) {
-  const [pages, setPages] = useState(() => ['index'])
+export function MenuMain({ world, page: initialPage = 'index' }) {
+  const [pages, setPages] = useState(() => [initialPage || 'index'])
+  useEffect(() => {
+    setPages([initialPage || 'index'])
+  }, [initialPage])
   const pop = () => {
     const next = pages.slice()
     next.pop()
@@ -34,6 +38,7 @@ export function MenuMain({ world }) {
   if (page === 'graphics') Page = MenuMainGraphics
   if (page === 'audio') Page = MenuMainAudio
   if (page === 'world') Page = MenuMainWorld
+  if (page === 'help') Page = MenuMainHelp
   return <Page world={world} pop={pop} push={push} />
 }
 
@@ -52,6 +57,12 @@ function MenuMainIndex({ world, pop, push }) {
       <MenuItemBtn label='UI' hint='Change your interface settings' onClick={() => push('ui')} nav />
       <MenuItemBtn label='Graphics' hint='Change your device graphics settings' onClick={() => push('graphics')} nav />
       <MenuItemBtn label='Audio' hint='Change your audio volume' onClick={() => push('audio')} nav />
+      <MenuItemBtn
+        label='Help & Shortcuts'
+        hint='Browse keyboard shortcuts and accessibility tips'
+        onClick={() => push('help')}
+        nav
+      />
       {isBuilder && <MenuItemBtn label='World' hint='Modify world settings' onClick={() => push('world')} nav />}
       {isBuilder && (
         <MenuItemBtn label='Apps' hint='View all apps in the world' onClick={() => world.ui.toggleApps()} />
@@ -67,6 +78,9 @@ function MenuMainUI({ world, pop, push }) {
   const [actions, setActions] = useState(world.prefs.actions)
   const [stats, setStats] = useState(world.prefs.stats)
   const [statsPalette, setStatsPalette] = useState(world.prefs.statsPalette)
+  const [themeMode, setThemeMode] = useState(world.prefs.themeMode)
+  const [themeHuePrimary, setThemeHuePrimary] = useState(world.prefs.themeHuePrimary)
+  const [themeHueNeutral, setThemeHueNeutral] = useState(world.prefs.themeHueNeutral)
   const { isBuilder } = usePermissions(world)
   useEffect(() => {
     const onChange = changes => {
@@ -74,6 +88,9 @@ function MenuMainUI({ world, pop, push }) {
       if (changes.actions) setActions(changes.actions.value)
       if (changes.stats) setStats(changes.stats.value)
       if (changes.statsPalette) setStatsPalette(changes.statsPalette.value)
+      if (changes.themeMode) setThemeMode(changes.themeMode.value)
+      if (changes.themeHuePrimary) setThemeHuePrimary(changes.themeHuePrimary.value)
+      if (changes.themeHueNeutral) setThemeHueNeutral(changes.themeHueNeutral.value)
     }
     world.prefs.on('change', onChange)
     return () => {
@@ -98,6 +115,38 @@ function MenuMainUI({ world, pop, push }) {
         value={ui}
         onChange={ui => world.prefs.setUI(ui)}
       />
+      <MenuSection label='Appearance' />
+      <MenuItemSwitch
+        label='Theme Mode'
+        hint='Switch between dark, light, or system-controlled theming'
+        options={[
+          { label: 'System', value: 'system' },
+          { label: 'Dark', value: 'dark' },
+          { label: 'Light', value: 'light' },
+        ]}
+        value={themeMode}
+        onChange={mode => world.prefs.setThemeMode(mode)}
+      />
+      <MenuItemRange
+        label='Accent Hue'
+        hint='Adjust the hue used for highlights and focus states'
+        min={0}
+        max={360}
+        step={1}
+        instant
+        value={themeHuePrimary}
+        onChange={value => world.prefs.setThemeHuePrimary(value)}
+      />
+      <MenuItemRange
+        label='Surface Hue'
+        hint='Adjust the base hue used for panels and surfaces'
+        min={0}
+        max={360}
+        step={1}
+        instant
+        value={themeHueNeutral}
+        onChange={value => world.prefs.setThemeHueNeutral(value)}
+      />
       {isBuilder && (
         <MenuItemToggle
           label='Build Prompts'
@@ -118,6 +167,33 @@ function MenuMainUI({ world, pop, push }) {
         options={STATS_PALETTE_OPTIONS}
         value={statsPalette}
         onChange={palette => world.prefs.setStatsPalette(palette)}
+      />
+    </Menu>
+  )
+}
+
+function MenuMainHelp({ pop }) {
+  const shortcuts = [
+    { label: 'Open menu', value: 'Esc' },
+    { label: 'Toggle menu', value: 'Ctrl/Cmd + Shift + P' },
+    { label: 'Help overlay', value: 'Shift + ?' },
+    { label: 'Apps pane', value: 'Ctrl/Cmd + Shift + A' },
+  ]
+  return (
+    <Menu title='Help & Shortcuts'>
+      <MenuItemBack hint='Go back to the main menu' onClick={pop} />
+      <MenuSection label='Keyboard shortcuts' />
+      {shortcuts.map(item => (
+        <MenuItemStatic key={item.label} label={item.label} value={item.value} />
+      ))}
+      <MenuSection label='Accessibility' />
+      <MenuItemStatic
+        label='Focus management'
+        value='Overlays keep focus until closed so keyboard navigation stays predictable.'
+      />
+      <MenuItemStatic
+        label='Tab navigation'
+        value='Use Tab and Shift+Tab to move between controls when panes are open.'
       />
     </Menu>
   )
