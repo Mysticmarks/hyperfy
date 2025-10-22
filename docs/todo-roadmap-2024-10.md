@@ -108,6 +108,11 @@ This roadmap expands the outstanding TODO markers discovered during the October 
 - Configuration option persists between sessions.
 - Documentation updated with palette and usage instructions.
 
+**Status Update (Nov 2024)**
+- ✅ Shipped classic and high-contrast palettes with backend-specific GPU colours.
+- ✅ Added persistent palette switchers to both the sidebar and main menu preferences.
+- ✅ Documented workflow in [`docs/extras/stats-hud.md`](./extras/stats-hud.md).
+
 **Validation**
 - Automated: screenshot test verifying colour assignments against WCAG contrast thresholds.
 - Manual: toggle telemetry settings in dev build and confirm persistence via reload.

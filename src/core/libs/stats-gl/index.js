@@ -1,4 +1,26 @@
 import Panel from './panel'
+import { STATS_PALETTE_DEFAULT, STATS_PALETTE_HIGH_CONTRAST } from '../constants/statsPalettes.js'
+
+const DEFAULT_TELEMETRY_PALETTES = {
+  [STATS_PALETTE_DEFAULT]: {
+    fps: { fg: '#0ff', bg: '#002' },
+    cpu: { fg: '#0f0', bg: '#020' },
+    gpuWebGL: { fg: '#ff0', bg: '#220' },
+    gpuWebGPU: { fg: '#5ac8ff', bg: '#0c223a' },
+    gpuComputeWebGPU: { fg: '#d7a8ff', bg: '#26113b' },
+    ping: { fg: '#f00', bg: '#200' },
+  },
+  [STATS_PALETTE_HIGH_CONTRAST]: {
+    fps: { fg: '#00f5ff', bg: '#001219' },
+    cpu: { fg: '#61ff4d', bg: '#01260f' },
+    gpuWebGL: { fg: '#fff454', bg: '#261f02' },
+    gpuWebGPU: { fg: '#74a6ff', bg: '#001a33' },
+    gpuComputeWebGPU: { fg: '#ff7dd8', bg: '#2d0023' },
+    ping: { fg: '#ff6b6b', bg: '#2b0000' },
+  },
+}
+
+const DEFAULT_TELEMETRY_PALETTE = DEFAULT_TELEMETRY_PALETTES[STATS_PALETTE_DEFAULT]
 
 /**
  * This is a modified version of stats-gl
@@ -55,6 +77,8 @@ class Stats {
     minimal = false,
     horizontal = true,
     mode = 0,
+    telemetryPalette = STATS_PALETTE_DEFAULT,
+    telemetryPalettes,
   } = {}) {
     this.mode = mode
     this.horizontal = horizontal
@@ -77,6 +101,7 @@ class Stats {
     this.frames = 0
     this.renderCount = 0
     this.threeRendererPatched = false
+    this.rendererBackend = 'webgl'
     this.averageCpu = {
       logs: [],
       graph: [],
@@ -92,8 +117,18 @@ class Stats {
 
     this.queryCreated = false
 
-    this.fpsPanel = this.addPanel(new Panel('FPS', '#0ff', '#002'), 0)
-    this.msPanel = this.addPanel(new Panel('CPU', '#0f0', '#020'), 1)
+    this.telemetryPalettes = {
+      ...DEFAULT_TELEMETRY_PALETTES,
+      ...(telemetryPalettes || {}),
+    }
+    this.telemetryPaletteName = this.telemetryPalettes[telemetryPalette]
+      ? telemetryPalette
+      : STATS_PALETTE_DEFAULT
+
+    const fpsColors = this.getTelemetryPanelColors('fps')
+    this.fpsPanel = this.addPanel(new Panel('FPS', fpsColors.fg, fpsColors.bg), 0)
+    const cpuColors = this.getTelemetryPanelColors('cpu')
+    this.msPanel = this.addPanel(new Panel('CPU', cpuColors.fg, cpuColors.bg), 1)
     this.gpuPanel = null
     this.gpuPanelCompute = null
 
@@ -176,6 +211,59 @@ class Stats {
     return panel
   }
 
+  getTelemetryPanelColors(type, { palette, renderer } = {}) {
+    const paletteName =
+      palette && this.telemetryPalettes[palette] ? palette : this.telemetryPaletteName
+    const paletteDefinition =
+      this.telemetryPalettes[paletteName] || DEFAULT_TELEMETRY_PALETTE
+    const backend = renderer || this.rendererBackend
+
+    if (type === 'fps' && paletteDefinition.fps) return paletteDefinition.fps
+    if (type === 'cpu' && paletteDefinition.cpu) return paletteDefinition.cpu
+    if (type === 'ping' && paletteDefinition.ping) return paletteDefinition.ping
+
+    if (type === 'gpu') {
+      if (backend === 'webgpu' && paletteDefinition.gpuWebGPU) {
+        return paletteDefinition.gpuWebGPU
+      }
+      return paletteDefinition.gpuWebGL || DEFAULT_TELEMETRY_PALETTE.gpuWebGL
+    }
+
+    if (type === 'gpu-compute') {
+      if (backend === 'webgpu' && paletteDefinition.gpuComputeWebGPU) {
+        return paletteDefinition.gpuComputeWebGPU
+      }
+      return paletteDefinition.gpuWebGL || DEFAULT_TELEMETRY_PALETTE.gpuWebGL
+    }
+
+    return DEFAULT_TELEMETRY_PALETTE.fps
+  }
+
+  applyTelemetryPalette() {
+    const fpsColors = this.getTelemetryPanelColors('fps')
+    this.fpsPanel?.setColors(fpsColors.fg, fpsColors.bg)
+
+    const cpuColors = this.getTelemetryPanelColors('cpu')
+    this.msPanel?.setColors(cpuColors.fg, cpuColors.bg)
+
+    if (this.gpuPanel) {
+      const gpuColors = this.getTelemetryPanelColors('gpu')
+      this.gpuPanel.setColors(gpuColors.fg, gpuColors.bg)
+    }
+
+    if (this.gpuPanelCompute) {
+      const computeColors = this.getTelemetryPanelColors('gpu-compute')
+      this.gpuPanelCompute.setColors(computeColors.fg, computeColors.bg)
+    }
+  }
+
+  setTelemetryPalette(name) {
+    if (!this.telemetryPalettes[name]) return
+    if (this.telemetryPaletteName === name) return
+    this.telemetryPaletteName = name
+    this.applyTelemetryPalette()
+  }
+
   showPanel(id) {
     for (let i = 0; i < this.dom.children.length; i++) {
       const child = this.dom.children[i]
@@ -192,28 +280,27 @@ class Stats {
       return
     }
 
-    // if ((canvasOrGL as any).isWebGPURenderer && !this.threeRendererPatched) {
-    // TODO Color GPU Analytic in another color than yellow to know webgpu or webgl context (blue)
-    //   const canvas: any = canvasOrGL
-    //   this.patchThreeRenderer(canvas as any);
-    //   this.gl = canvas.getContext();
-    // } else
     if (canvasOrGL.isWebGLRenderer && !this.threeRendererPatched) {
       const canvas = canvasOrGL
       if (patch) {
         this.patchThreeRenderer(canvas)
       }
       this.gl = canvas.getContext()
+      this.rendererBackend = 'webgl'
     } else if (!this.gl && canvasOrGL instanceof WebGL2RenderingContext) {
       this.gl = canvasOrGL
+      this.rendererBackend = 'webgl'
     }
 
     if (canvasOrGL.isWebGPURenderer) {
+      this.rendererBackend = 'webgpu'
       canvasOrGL.backend.trackTimestamp = true
 
       if (await canvasOrGL.hasFeatureAsync('timestamp-query')) {
-        this.gpuPanel = this.addPanel(new Panel('GPU', '#ff0', '#220'), 2)
-        this.gpuPanelCompute = this.addPanel(new Panel('CPT', '#e1e1e1', '#212121'), 3)
+        const gpuColors = this.getTelemetryPanelColors('gpu', { renderer: 'webgpu' })
+        this.gpuPanel = this.addPanel(new Panel('GPU', gpuColors.fg, gpuColors.bg), 2)
+        const computeColors = this.getTelemetryPanelColors('gpu-compute', { renderer: 'webgpu' })
+        this.gpuPanelCompute = this.addPanel(new Panel('CPT', computeColors.fg, computeColors.bg), 3)
         this.info = canvasOrGL.info
       }
       return
@@ -237,7 +324,8 @@ class Stats {
     // Get the extension
     this.ext = this.gl.getExtension('EXT_disjoint_timer_query_webgl2')
     if (this.ext) {
-      this.gpuPanel = this.addPanel(new Panel('GPU', '#ff0', '#220'), 2)
+      const gpuColors = this.getTelemetryPanelColors('gpu', { renderer: 'webgl' })
+      this.gpuPanel = this.addPanel(new Panel('GPU', gpuColors.fg, gpuColors.bg), 2)
     }
   }
 

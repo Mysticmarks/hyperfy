@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- core: configurable performance stats palette with a high-contrast option and persistent preference toggle
 
 ### Changed
 

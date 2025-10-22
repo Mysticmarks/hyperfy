@@ -40,31 +40,44 @@ class Panel {
     this.context = this.canvas.getContext('2d')
 
     if (this.context) {
-      this.context.font =
-        'bold ' + 9 * this.PR + 'px Helvetica,Arial,sans-serif'
-      this.context.textBaseline = 'top'
-
-      this.context.fillStyle = this.bg
-      this.context.fillRect(0, 0, this.WIDTH, this.HEIGHT)
-
-      this.context.fillStyle = this.fg
-      this.context.fillText(this.name, this.TEXT_X, this.TEXT_Y)
-      this.context.fillRect(
-        this.GRAPH_X,
-        this.GRAPH_Y,
-        this.GRAPH_WIDTH,
-        this.GRAPH_HEIGHT
-      )
-
-      this.context.fillStyle = this.bg
-      this.context.globalAlpha = 0.9
-      this.context.fillRect(
-        this.GRAPH_X,
-        this.GRAPH_Y,
-        this.GRAPH_WIDTH,
-        this.GRAPH_HEIGHT
-      )
+      this.applyTheme()
     }
+  }
+
+  applyTheme() {
+    if (!this.context) return
+
+    this.context.font = 'bold ' + 9 * this.PR + 'px Helvetica,Arial,sans-serif'
+    this.context.textBaseline = 'top'
+
+    this.context.globalAlpha = 1
+    this.context.fillStyle = this.bg
+    this.context.fillRect(0, 0, this.WIDTH, this.HEIGHT)
+
+    this.context.fillStyle = this.fg
+    this.context.fillText(this.name, this.TEXT_X, this.TEXT_Y)
+    this.context.fillRect(
+      this.GRAPH_X,
+      this.GRAPH_Y,
+      this.GRAPH_WIDTH,
+      this.GRAPH_HEIGHT
+    )
+
+    this.context.fillStyle = this.bg
+    this.context.globalAlpha = 0.9
+    this.context.fillRect(
+      this.GRAPH_X,
+      this.GRAPH_Y,
+      this.GRAPH_WIDTH,
+      this.GRAPH_HEIGHT
+    )
+    this.context.globalAlpha = 1
+  }
+
+  setColors(fg, bg) {
+    this.fg = fg
+    this.bg = bg
+    this.applyTheme()
   }
 
   update(value, valueGraph, maxValue, maxGraph, decimals = 0) {
@@ -122,6 +135,7 @@ class Panel {
       this.PR,
       (1 - valueGraph / maxGraph) * this.GRAPH_HEIGHT
     )
+    this.context.globalAlpha = 1
   }
 }
 
