@@ -30,6 +30,7 @@ export class Controller extends Node {
     this.tag = data.tag
     this.onContactStart = data.onContactStart
     this.onContactEnd = data.onContactEnd
+    this.shapes = null
   }
 
   mount() {
@@ -66,8 +67,10 @@ export class Controller extends Node {
     const nbShapes = actor.getNbShapes()
     const shapeBuffer = new PHYSX.PxArray_PxShapePtr(nbShapes)
     const shapesCount = actor.getShapes(shapeBuffer.begin(), nbShapes, 0)
+    this.shapes = []
     for (let i = 0; i < shapesCount; i++) {
       const shape = shapeBuffer.get(i)
+      this.shapes.push(shape)
       const layer = Layers[this._layer]
       const pairFlags =
         PHYSX.PxPairFlagEnum.eNOTIFY_TOUCH_FOUND |
@@ -79,7 +82,10 @@ export class Controller extends Node {
       shape.setFlags(shapeFlags)
       shape.setQueryFilterData(filterData)
       shape.setSimulationFilterData(filterData)
+      PHYSX.destroy(shapeFlags)
+      PHYSX.destroy(filterData)
     }
+    PHYSX.destroy(shapeBuffer)
     const self = this
     this.actorHandle = this.ctx.world.physics.addActor(actor, {
       controller: true,
@@ -125,6 +131,7 @@ export class Controller extends Node {
     this.actorHandle = null
     this.controller?.release()
     this.controller = null
+    this.shapes = null
   }
 
   copy(source, recursive) {
@@ -188,10 +195,9 @@ export class Controller extends Node {
     }
     this._layer = value
     if (this.controller) {
-      // TODO: we could just update the PxFilterData tbh
-      this.needsRebuild = true
-      this.setDirty()
+      this.updateLayerFilter()
     }
+    this.setDirty()
   }
 
   get tag() {
@@ -324,6 +330,23 @@ export class Controller extends Node {
       this.proxy = proxy
     }
     return this.proxy
+  }
+
+  updateLayerFilter() {
+    if (!this.controller || !this.shapes?.length) return
+    const actor = this.controller.getActor()
+    const layer = Layers[this._layer]
+    const pairFlags =
+      PHYSX.PxPairFlagEnum.eNOTIFY_TOUCH_FOUND |
+      PHYSX.PxPairFlagEnum.eNOTIFY_TOUCH_LOST |
+      PHYSX.PxPairFlagEnum.eNOTIFY_CONTACT_POINTS
+    const filterData = new PHYSX.PxFilterData(layer.group, layer.mask, pairFlags, 0)
+    for (const shape of this.shapes) {
+      shape.setQueryFilterData(filterData)
+      shape.setSimulationFilterData(filterData)
+      this.ctx.world.physics.scene?.resetFiltering?.(actor, shape)
+    }
+    PHYSX.destroy(filterData)
   }
 }
 

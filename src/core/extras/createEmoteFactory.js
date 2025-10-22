@@ -82,7 +82,7 @@ export function createEmoteFactory(glb, url) {
   // console.log(clip)
 
   return {
-    toClip({ rootToHips, version, getBoneName }) {
+    toClip({ rootToHips, version, getHumanoidBoneName }) {
       // we're going to resize animation to match vrm height
       const height = rootToHips
 
@@ -92,8 +92,7 @@ export function createEmoteFactory(glb, url) {
         const trackSplitted = track.name.split('.')
         const ogBoneName = trackSplitted[0]
         const vrmBoneName = normalizedBoneNames[ogBoneName]
-        // TODO: use vrm.bones[name] not getBoneNode
-        const vrmNodeName = getBoneName(vrmBoneName)
+        const vrmNodeName = vrmBoneName ? getHumanoidBoneName(vrmBoneName) : undefined
 
         // console.log('----')
         // console.log('trackSplitted', trackSplitted)
@@ -111,7 +110,7 @@ export function createEmoteFactory(glb, url) {
         // and ensures feet stay on the ground
         const scaler = height * scale
 
-        if (vrmNodeName !== undefined) {
+        if (vrmNodeName) {
           const propertyName = trackSplitted[1]
 
           if (track instanceof THREE.QuaternionKeyframeTrack) {

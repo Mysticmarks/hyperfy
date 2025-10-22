@@ -79,3 +79,9 @@ instance vitality.
 These additions provide the foundation for sharded orchestration, load-aware routing,
 and automated monitoring pipelines that are essential for operating an MMORPG-scale
 deployment.
+
+## Physics Maintenance
+
+- When recycling a zone in-place, call `world.physics.destroy()` before discarding the instance. The system now releases its raycast, sweep, and overlap buffers alongside controller filter state so repeated hot reloads do not leak PhysX allocations. 【F:src/core/systems/Physics.js†L300-L349】【F:src/core/systems/Physics.js†L601-L620】
+- Controllers and colliders no longer require a full rebuild when adjusting collision layers. Updating the `layer` property on either node rewrites the underlying `PxFilterData` and resets the actor’s filtering on the active scene, letting QA iterate on interaction matrices without respawning actors. 【F:src/core/nodes/Controller.js†L22-L191】【F:src/core/nodes/Collider.js†L1-L214】
+- For scripted debugging flows, store references to any ad-hoc query results you allocate and destroy them alongside the zone teardown. Mirroring the built-in systems keeps the PhysX heap flat even while zones are stopped and restarted during load tests.

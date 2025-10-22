@@ -38,7 +38,7 @@ This task board enumerates the concrete deliverables required to close the gaps 
 - [ ] Expand UI/UX documentation covering lifecycle, scripting APIs, and performance tuning guidelines.
 
 ## 6. Documentation & Knowledge Base
-- [ ] Close outstanding TODOs in scripting and systems documentation with up-to-date lifecycle explanations (see [October 2024 TODO Roadmap](./todo-roadmap-2024-10.md) for current backlog).
+- [x] Close outstanding TODOs in scripting and systems documentation with up-to-date lifecycle explanations (see [October 2024 TODO Roadmap](./todo-roadmap-2024-10.md) for current backlog).
 - [ ] Produce end-to-end developer walkthroughs (from world bootstrap to live content publishing).
 - [ ] Create operational runbooks for on-call, incident response, and maintenance tasks.
 - [ ] Maintain change logs linking new systems to roadmap milestones and deployment readiness criteria.
