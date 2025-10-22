@@ -1,6 +1,13 @@
 import * as THREE from './extras/three'
 import EventEmitter from 'eventemitter3'
 
+const getHighResTime = (() => {
+  if (typeof globalThis !== 'undefined' && globalThis.performance && typeof globalThis.performance.now === 'function') {
+    return () => globalThis.performance.now()
+  }
+  return () => Date.now()
+})()
+
 import { Settings } from './systems/Settings'
 import { Collections } from './systems/Collections'
 import { Apps } from './systems/Apps'
@@ -82,6 +89,7 @@ export class World extends EventEmitter {
   }
 
   tick = time => {
+    const tickStart = getHighResTime()
     // begin any stats/performance monitors
     this.preTick()
     // update time, delta, frame and accumulator
@@ -121,6 +129,14 @@ export class World extends EventEmitter {
     this.commit()
     // end any stats/performance monitors
     this.postTick()
+
+    const duration = getHighResTime() - tickStart
+    this.emit('tick', {
+      frame: this.frame,
+      time: this.time,
+      delta,
+      duration,
+    })
   }
 
   preTick() {
