@@ -1,14 +1,15 @@
 /**
- * CSS Reset
+ * Global reset & base styles
  */
 html {
   box-sizing: border-box;
   font-size: 16px;
 }
 *,
-*:before,
-*:after {
+*::before,
+*::after {
   box-sizing: inherit;
+  min-width: 0;
 }
 body,
 h1,
@@ -32,49 +33,62 @@ img {
   max-width: 100%;
   height: auto;
 }
-
-/** 
- * Fix common issue with flex ellipsis 
- */
-* {
-  min-width: 0;
-}
-
-/**
- * Fix alignment of svgs
- */
 svg {
   display: inline-block;
 }
 
-/**
- * Text selection color
- */
-::selection {
-  color: white;
-  background: var(--primary-color);
+:root {
+  overscroll-behavior: none;
+  --hf-primary-hue: 265;
+  --hf-neutral-hue: 220;
+  --hf-color-bg: hsl(var(--hf-neutral-hue) 28% 6%);
+  --hf-color-surface: hsl(var(--hf-neutral-hue) 26% 10%);
+  --hf-color-surface-raised: hsl(var(--hf-neutral-hue) 24% 14%);
+  --hf-color-border: hsl(var(--hf-neutral-hue) 38% 26% / 0.32);
+  --hf-color-border-strong: hsl(var(--hf-neutral-hue) 48% 46% / 0.45);
+  --hf-color-text: hsl(var(--hf-neutral-hue) 32% 93%);
+  --hf-color-heading: hsl(var(--hf-neutral-hue) 36% 98%);
+  --hf-color-text-muted: hsl(var(--hf-neutral-hue) 22% 70%);
+  --hf-color-primary: hsl(var(--hf-primary-hue) 88% 68%);
+  --hf-color-primary-soft: hsl(var(--hf-primary-hue) 82% 60% / 0.18);
+  --hf-color-focus: hsl(var(--hf-primary-hue) 92% 72%);
+  --hf-color-surface-hover: rgba(255, 255, 255, 0.06);
+  --hf-shadow-soft: 0 1.1rem 3.2rem rgba(2, 6, 23, 0.42);
+  --hf-shadow-hard: 0 0.75rem 2.2rem rgba(2, 6, 23, 0.6);
+  --hf-transition-medium: 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/**
- * General
- */
-p {
-  line-height: 1.9;
+:root[data-theme='light'] {
+  --hf-color-bg: hsl(var(--hf-neutral-hue) 36% 97%);
+  --hf-color-surface: hsl(var(--hf-neutral-hue) 32% 92%);
+  --hf-color-surface-raised: hsl(var(--hf-neutral-hue) 28% 86%);
+  --hf-color-border: hsl(var(--hf-neutral-hue) 24% 62% / 0.26);
+  --hf-color-border-strong: hsl(var(--hf-neutral-hue) 32% 52% / 0.32);
+  --hf-color-text: hsl(var(--hf-neutral-hue) 30% 13%);
+  --hf-color-heading: hsl(var(--hf-neutral-hue) 34% 10%);
+  --hf-color-text-muted: hsl(var(--hf-neutral-hue) 18% 38%);
+  --hf-color-surface-hover: rgba(15, 23, 42, 0.08);
+  --hf-shadow-soft: 0 1.25rem 2.5rem rgba(15, 23, 42, 0.18);
+  --hf-shadow-hard: 0 0.75rem 1.75rem rgba(15, 23, 42, 0.24);
 }
-pre {
-  margin: 0;
+
+::selection {
+  color: hsl(var(--hf-neutral-hue) 100% 98%);
+  background: var(--hf-color-primary);
 }
-html,
-body {
+
+body,
+html {
   -webkit-font-smoothing: antialiased;
   font-family: 'Rubik', sans-serif;
   font-optical-sizing: auto;
   font-size: 16px;
   font-weight: 400;
   font-style: normal;
-  background-color: black;
-  color: white;
+  background-color: var(--hf-color-bg);
+  color: var(--hf-color-text);
 }
+
 input,
 textarea {
   border: 0;
@@ -88,18 +102,20 @@ textarea {
   font-size: inherit;
   color: inherit;
 }
-input::placeholder,
-textarea::placeholder {
-  /* color: rgba(255, 255, 255, 0.3); */
-}
+
 a {
   text-decoration: none;
   color: inherit;
 }
 
-/**
- * Hyperfy
- */
+.noscrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.noscrollbar::-webkit-scrollbar {
+  display: none;
+}
 
 /* font (latin) */
 @font-face {
@@ -110,81 +126,4 @@ a {
   src: url(/rubik.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
     U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-/* disable scroll bounce */
-
-:root {
-  overscroll-behavior: none;
-}
-
-/* fix common issue with flex ellipsis */
-
-* {
-  min-width: 0;
-}
-
-/* fix alignment of svgs */
-
-svg {
-  display: inline-block;
-}
-
-/* text selection */
-
-::selection {
-  color: white;
-  background: black;
-}
-
-/* hide scrollbar */
-
-.noscrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.noscrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* general */
-
-p {
-  line-height: 1.9;
-}
-
-pre {
-  margin: 0;
-}
-
-html,
-body {
-  -webkit-font-smoothing: antialiased;
-  font-family: 'Rubik', sans-serif;
-  font-optical-sizing: auto;
-  font-size: 16px;
-  font-weight: 400;
-  font-style: normal;
-
-  background-color: black;
-  color: white;
-}
-
-input,
-textarea {
-  border: 0;
-  background: none;
-  outline: 0;
-  padding: 0;
-  margin: 0;
-  display: block;
-  width: 100%;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
 }

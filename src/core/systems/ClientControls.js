@@ -435,8 +435,11 @@ export class ClientControls extends System {
     }
     const code = e.code
     if (code === 'Tab') {
-      // prevent default focus switching behavior
-      e.preventDefault()
+      const allowTab = this.world.ui?.shouldAllowTabNavigation?.()
+      if (!allowTab) {
+        // prevent default focus switching behavior when UI is controlling focus
+        e.preventDefault()
+      }
     }
     const prop = codeToProp[code]
     const text = e.key

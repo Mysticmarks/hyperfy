@@ -9,37 +9,60 @@ import { CurvePreview } from './CurvePreview'
 import { Curve } from '../../core/extras/Curve'
 import { Portal } from './Portal'
 import { CurvePane } from './CurvePane'
+import { useFocusTrap } from './useFocusTrap'
 
 const MenuContext = createContext()
 
 export function Menu({ title, blur, children }) {
   const [hint, setHint] = useState(null)
+  const menuRef = useRef(null)
+  useFocusTrap(menuRef)
   return (
     <MenuContext.Provider value={setHint}>
       <div
+        ref={menuRef}
         className='menu'
         css={css`
           pointer-events: auto;
-          opacity: ${blur ? 0.3 : 1};
-          transition: opacity 0.15s ease-out;
+          display: flex;
+          flex-direction: column;
+          min-width: 22rem;
+          max-height: calc(100vh - 4rem);
+          background: var(--hf-color-surface);
+          border: 1px solid var(--hf-color-border);
+          border-radius: 1rem;
+          box-shadow: var(--hf-shadow-hard);
+          opacity: ${blur ? 0.35 : 1};
+          transition: opacity var(--hf-transition-medium);
           font-size: 1rem;
+          color: var(--hf-color-text);
+          overflow: hidden;
+          &:focus-visible {
+            outline: 0.2rem solid var(--hf-color-focus);
+            outline-offset: 0.15rem;
+          }
           .menu-head {
-            background: #0f1018;
-            padding: 1rem;
+            background: var(--hf-color-surface-raised);
+            padding: 1rem 1.25rem;
             white-space: nowrap;
             text-overflow: ellipsis;
             overflow: hidden;
             span {
               font-size: 1.3rem;
               font-weight: 600;
+              color: var(--hf-color-heading);
             }
           }
           .menu-items {
-            background-color: rgba(15, 16, 24, 0.8);
+            background-color: var(--hf-color-surface);
             overflow-y: auto;
             max-height: calc(2.5rem * 9.5);
+            flex: 1 1 auto;
           }
         `}
+        role='dialog'
+        aria-modal='true'
+        tabIndex={-1}
       >
         <div className='menu-head'>
           <span>{title}</span>
@@ -57,11 +80,12 @@ function MenuHint({ text }) {
       className='menuhint'
       css={css`
         margin-top: 0.2rem;
-        padding: 0.875rem;
-        font-size: 1rem;
+        padding: 0.875rem 1.25rem;
+        font-size: 0.95rem;
         line-height: 1.4;
-        background-color: rgba(15, 16, 24, 0.8);
-        border-top: 0.1rem solid black;
+        background-color: var(--hf-color-surface-raised);
+        border-top: 0.1rem solid var(--hf-color-border);
+        color: var(--hf-color-text-muted);
       `}
     >
       <span>{text}</span>
@@ -72,14 +96,19 @@ function MenuHint({ text }) {
 export function MenuItemBack({ hint, onClick }) {
   const setHint = useContext(MenuContext)
   return (
-    <label
+    <button
       className='menuback'
       css={css`
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.825rem;
+        padding: 0 1.25rem;
         font-size: 1rem;
+        background: none;
+        border: none;
+        width: 100%;
+        color: inherit;
+        text-align: left;
         > svg {
           margin-left: -0.25rem;
         }
@@ -88,18 +117,23 @@ export function MenuItemBack({ hint, onClick }) {
         }
         &:hover {
           cursor: pointer;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--hf-color-surface-hover);
+        }
+        &:focus-visible {
+          outline: none;
+          background: var(--hf-color-surface-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
       onPointerLeave={() => setHint(null)}
       onClick={onClick}
+      type='button'
     >
       <ChevronLeftIcon size={'1.5rem'} />
       <div className='menuback-label'>
         <span>Back</span>
       </div>
-    </label>
+    </button>
   )
 }
 
@@ -109,7 +143,7 @@ export function MenuLine() {
       className='menuline'
       css={css`
         height: 0.1rem;
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--hf-color-border);
       `}
     />
   )
@@ -119,10 +153,10 @@ export function MenuSection({ label }) {
   return (
     <div
       css={css`
-        padding: 0.25rem 0.875rem;
+        padding: 0.25rem 1.25rem;
         font-size: 0.75rem;
         font-weight: 500;
-        opacity: 0.3;
+        color: var(--hf-color-text-muted);
         white-space: nowrap;
         text-overflow: ellipsis;
         overflow: hidden;
@@ -136,13 +170,13 @@ export function MenuSection({ label }) {
 export function MenuItemBtn({ label, hint, nav, onClick }) {
   const setHint = useContext(MenuContext)
   return (
-    <div
+    <button
       className='menuitembtn'
       css={css`
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.875rem;
+        padding: 0 1.25rem;
         .menuitembtn-label {
           flex: 1;
           white-space: nowrap;
@@ -151,16 +185,27 @@ export function MenuItemBtn({ label, hint, nav, onClick }) {
         }
         &:hover {
           cursor: pointer;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--hf-color-surface-hover);
+        }
+        background: none;
+        border: none;
+        color: inherit;
+        text-align: left;
+        width: 100%;
+        gap: 0.4rem;
+        &:focus-visible {
+          outline: none;
+          background: var(--hf-color-surface-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
       onPointerLeave={() => setHint(null)}
       onClick={onClick}
+      type='button'
     >
       <div className='menuitembtn-label'>{label}</div>
       {nav && <ChevronRightIcon size='1.5rem' />}
-    </div>
+    </button>
   )
 }
 
@@ -177,7 +222,7 @@ export function MenuItemText({ label, hint, placeholder, value, onChange }) {
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.875rem;
+        padding: 0 1.25rem;
         cursor: text;
         .menuitemtext-label {
           width: 9.4rem;
@@ -192,13 +237,12 @@ export function MenuItemText({ label, hint, placeholder, value, onChange }) {
         input {
           text-align: right;
           cursor: inherit;
-          &::selection {
-            background-color: white;
-            color: rgba(0, 0, 0, 0.8);
-          }
         }
         &:hover {
-          background-color: rgba(255, 255, 255, 0.05);
+          background-color: var(--hf-color-surface-hover);
+        }
+        &:focus-within {
+          background-color: var(--hf-color-surface-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
@@ -237,8 +281,8 @@ export function MenuItemStatic({ label, hint, value }) {
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.875rem;
-        opacity: 0.7;
+        padding: 0 1.25rem;
+        color: var(--hf-color-text-muted);
         .menuitemstatic-label {
           width: 9.4rem;
           flex-shrink: 0;
@@ -272,6 +316,7 @@ export function MenuItemTextarea({ label, hint, placeholder, value, onChange }) 
   }, [value])
   useEffect(() => {
     const textarea = textareaRef.current
+    if (!textarea) return
     function update() {
       textarea.style.height = 'auto'
       textarea.style.height = textarea.scrollHeight + 'px'
@@ -281,7 +326,7 @@ export function MenuItemTextarea({ label, hint, placeholder, value, onChange }) 
     return () => {
       textarea.removeEventListener('input', update)
     }
-  }, [])
+  }, [localValue])
   return (
     <label
       className='menuitemtext'
@@ -289,7 +334,7 @@ export function MenuItemTextarea({ label, hint, placeholder, value, onChange }) 
         display: flex;
         align-items: flex-start;
         min-height: 2.5rem;
-        padding: 0 0.875rem;
+        padding: 0 1.25rem;
         cursor: text;
         .menuitemtext-label {
           padding-top: 0.6rem;
@@ -311,13 +356,12 @@ export function MenuItemTextarea({ label, hint, placeholder, value, onChange }) 
           overflow: hidden;
           resize: none;
           cursor: inherit;
-          &::selection {
-            background-color: white;
-            color: rgba(0, 0, 0, 0.8);
-          }
         }
         &:hover {
-          background-color: rgba(255, 255, 255, 0.05);
+          background-color: var(--hf-color-surface-hover);
+        }
+        &:focus-within {
+          background-color: var(--hf-color-surface-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
@@ -382,7 +426,7 @@ export function MenuItemNumber({ label, hint, dp = 0, min = -Infinity, max = Inf
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.875rem;
+        padding: 0 1.25rem;
         cursor: text;
         .menuitemnumber-label {
           width: 9.4rem;
@@ -399,14 +443,13 @@ export function MenuItemNumber({ label, hint, dp = 0, min = -Infinity, max = Inf
           text-align: right;
           overflow: hidden;
           cursor: inherit;
-          &::selection {
-            background-color: white;
-            color: rgba(0, 0, 0, 0.8);
-          }
         }
         &:hover {
           cursor: pointer;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--hf-color-surface-hover);
+        }
+        &:focus-within {
+          background: var(--hf-color-surface-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
@@ -462,6 +505,7 @@ export function MenuItemRange({ label, hint, min = 0, max = 1, step = 0.05, inst
   }, [sliding, value])
   useEffect(() => {
     const track = trackRef.current
+    if (!track) return
     function calculateValueFromPointer(e, trackElement) {
       const rect = trackElement.getBoundingClientRect()
       const position = (e.clientX - rect.left) / rect.width
@@ -503,16 +547,60 @@ export function MenuItemRange({ label, hint, min = 0, max = 1, step = 0.05, inst
       track.removeEventListener('pointermove', onPointerMove)
       track.removeEventListener('pointerup', onPointerUp)
     }
-  }, [])
-  const barWidthPercentage = ((local - min) / (max - min)) * 100 + ''
+  }, [instant, max, min, step])
+  const clampToRange = useMemo(() => {
+    return newValue => {
+      if (!Number.isFinite(newValue)) return min
+      if (max <= min) return min
+      const safeStep = step === 0 ? max - min : step
+      const steps = Math.round((newValue - min) / safeStep)
+      const aligned = min + steps * safeStep
+      return Math.max(min, Math.min(max, aligned))
+    }
+  }, [min, max, step])
+  const commitValue = useMemo(() => {
+    return nextValue => {
+      const aligned = clampToRange(nextValue)
+      setLocal(aligned)
+      onChange(aligned)
+    }
+  }, [clampToRange, onChange])
+  const handleKeyDown = event => {
+    let delta = 0
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+      delta = step
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+      delta = -step
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      commitValue(min)
+      return
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      commitValue(max)
+      return
+    } else if (event.key === 'PageUp') {
+      delta = step * 10
+    } else if (event.key === 'PageDown') {
+      delta = -step * 10
+    } else {
+      return
+    }
+    event.preventDefault()
+    commitValue(local + delta)
+  }
+  const alignedLocal = clampToRange(local)
+  const range = max - min
+  const safeRange = range === 0 ? 1 : range
+  const barWidthPercentage = ((alignedLocal - min) / safeRange) * 100 + ''
   const text = useMemo(() => {
-    const num = local
+    const num = alignedLocal
     const decimalDigits = (num.toString().split('.')[1] || '').length
     if (decimalDigits <= 2) {
       return num.toString()
     }
     return num.toFixed(2)
-  }, [local])
+  }, [alignedLocal])
   return (
     <div
       className='menuitemrange'
@@ -520,7 +608,7 @@ export function MenuItemRange({ label, hint, min = 0, max = 1, step = 0.05, inst
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.875rem;
+        padding: 0 1.25rem;
         .menuitemrange-label {
           flex: 1;
           white-space: nowrap;
@@ -532,6 +620,7 @@ export function MenuItemRange({ label, hint, min = 0, max = 1, step = 0.05, inst
           font-size: 0.7rem;
           margin-right: 0.5rem;
           opacity: 0;
+          color: var(--hf-color-text-muted);
         }
         .menuitemrange-track {
           width: 7rem;
@@ -540,18 +629,31 @@ export function MenuItemRange({ label, hint, min = 0, max = 1, step = 0.05, inst
           border-radius: 0.1rem;
           display: flex;
           align-items: stretch;
-          background-color: rgba(255, 255, 255, 0.1);
+          background-color: var(--hf-color-border);
           &:hover {
             cursor: pointer;
           }
         }
         .menuitemrange-bar {
-          background-color: white;
+          background-color: var(--hf-color-primary);
           border-radius: 0.1rem;
           width: ${barWidthPercentage}%;
         }
         &:hover {
-          background-color: rgba(255, 255, 255, 0.05);
+          background-color: var(--hf-color-surface-hover);
+          .menuitemrange-text {
+            opacity: 1;
+          }
+        }
+        &:focus-visible {
+          outline: none;
+          background-color: var(--hf-color-surface-hover);
+          .menuitemrange-text {
+            opacity: 1;
+          }
+        }
+        &:focus-within {
+          background-color: var(--hf-color-surface-hover);
           .menuitemrange-text {
             opacity: 1;
           }
@@ -559,6 +661,14 @@ export function MenuItemRange({ label, hint, min = 0, max = 1, step = 0.05, inst
       `}
       onPointerEnter={() => setHint(hint)}
       onPointerLeave={() => setHint(null)}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role='slider'
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={Number(alignedLocal.toFixed(4))}
+      aria-valuetext={text}
+      aria-orientation='horizontal'
     >
       <div className='menuitemrange-label'>{label}</div>
       <div className='menuitemrange-text'>{text}</div>
@@ -584,6 +694,16 @@ export function MenuItemSwitch({ label, hint, options, value, onChange }) {
     if (nextIdx > options.length - 1) nextIdx = 0
     onChange(options[nextIdx].value)
   }
+  const handleKeyDown = e => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      prev()
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      next()
+    }
+  }
   return (
     <div
       className='menuitemswitch'
@@ -591,7 +711,7 @@ export function MenuItemSwitch({ label, hint, options, value, onChange }) {
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.875rem;
+        padding: 0 1.25rem;
         .menuitemswitch-label {
           flex: 1;
           white-space: nowrap;
@@ -599,24 +719,29 @@ export function MenuItemSwitch({ label, hint, options, value, onChange }) {
           overflow: hidden;
           padding-right: 1rem;
         }
-        .menuitemswitch-btn {
-          width: 2.125rem;
-          height: 2.125rem;
-          display: none;
-          align-items: center;
-          justify-content: center;
-          opacity: 0.2;
-          &:hover {
-            cursor: pointer;
-            opacity: 1;
+          .menuitemswitch-btn {
+            width: 2.125rem;
+            height: 2.125rem;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.2;
+            background: none;
+            border: none;
+            color: var(--hf-color-text-muted);
+            &:hover {
+              cursor: pointer;
+              opacity: 1;
+              color: var(--hf-color-heading);
+            }
           }
-        }
-        .menuitemswitch-text {
-          line-height: 1;
-        }
-        &:hover {
+          .menuitemswitch-text {
+            line-height: 1;
+          }
+        &:hover,
+        &:focus-within {
           padding: 0 0.275rem 0 0.875rem;
-          background-color: rgba(255, 255, 255, 0.05);
+          background-color: var(--hf-color-surface-hover);
           .menuitemswitch-btn {
             display: flex;
           }
@@ -624,15 +749,19 @@ export function MenuItemSwitch({ label, hint, options, value, onChange }) {
       `}
       onPointerEnter={() => setHint(hint)}
       onPointerLeave={() => setHint(null)}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role='group'
+      aria-label={label}
     >
       <div className='menuitemswitch-label'>{label}</div>
-      <div className='menuitemswitch-btn left' onClick={prev}>
+      <button className='menuitemswitch-btn left' type='button' onClick={prev} aria-label='Previous option'>
         <ChevronLeftIcon size='1.5rem' />
-      </div>
+      </button>
       <div className='menuitemswitch-text'>{selected?.label || '???'}</div>
-      <div className='menuitemswitch-btn right' onClick={next}>
+      <button className='menuitemswitch-btn right' type='button' onClick={next} aria-label='Next option'>
         <ChevronRightIcon size='1.5rem' />
-      </div>
+      </button>
     </div>
   )
 }
@@ -649,7 +778,7 @@ export function MenuItemCurve({ label, hint, x, xRange, y, yMin, yMax, value, on
           display: flex;
           align-items: center;
           height: 2.5rem;
-          padding: 0 0.875rem;
+          padding: 0 1.25rem;
         }
         .menuitemcurve-label {
           flex: 1;
@@ -665,7 +794,7 @@ export function MenuItemCurve({ label, hint, x, xRange, y, yMin, yMax, value, on
         }
         &:hover {
           cursor: pointer;
-          background-color: rgba(255, 255, 255, 0.05);
+          background-color: var(--hf-color-surface-hover);
         }
       `}
     >
@@ -735,7 +864,7 @@ export function MenuItemFileBtn({ label, hint, accept, value, onChange }) {
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.875rem;
+        padding: 0 1.25rem;
         overflow: hidden;
         .menuitemfilebtn-label {
           width: 9.4rem;
@@ -747,7 +876,10 @@ export function MenuItemFileBtn({ label, hint, accept, value, onChange }) {
         }
         &:hover {
           cursor: pointer;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--hf-color-surface-hover);
+        }
+        &:focus-within {
+          background: var(--hf-color-surface-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
@@ -875,7 +1007,7 @@ export function MenuItemFile({ world, label, hint, kind: kindName, value, onChan
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.875rem;
+        padding: 0 1.25rem;
         overflow: hidden;
         input {
           position: absolute;
@@ -894,7 +1026,7 @@ export function MenuItemFile({ world, label, hint, kind: kindName, value, onChan
           padding-right: 1rem;
         }
         .menuitemfile-placeholder {
-          color: rgba(255, 255, 255, 0.3);
+          color: var(--hf-color-text-muted);
         }
         .menuitemfile-name {
           text-align: right;
@@ -906,9 +1038,9 @@ export function MenuItemFile({ world, label, hint, kind: kindName, value, onChan
         .menuitemfile-x {
           line-height: 0;
           margin: 0 -0.2rem 0 0.3rem;
-          color: rgba(255, 255, 255, 0.3);
+          color: var(--hf-color-text-muted);
           &:hover {
-            color: white;
+            color: var(--hf-color-heading);
           }
         }
         .menuitemfile-loading {
@@ -930,7 +1062,10 @@ export function MenuItemFile({ world, label, hint, kind: kindName, value, onChan
         }
         &:hover {
           cursor: pointer;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--hf-color-surface-hover);
+        }
+        &:focus-within {
+          background: var(--hf-color-surface-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
@@ -958,13 +1093,18 @@ export function MenuItemFile({ world, label, hint, kind: kindName, value, onChan
 export function MenuItemToggle({ label, hint, trueLabel = 'Yes', falseLabel = 'No', value, onChange }) {
   const setHint = useContext(MenuContext)
   return (
-    <div
+    <button
       className='menuitemtoggle'
       css={css`
         display: flex;
         align-items: center;
         height: 2.5rem;
-        padding: 0 0.875rem;
+        padding: 0 1.25rem;
+        width: 100%;
+        background: none;
+        border: none;
+        color: inherit;
+        text-align: left;
         .menuitemtoggle-label {
           flex: 1;
           white-space: nowrap;
@@ -973,19 +1113,28 @@ export function MenuItemToggle({ label, hint, trueLabel = 'Yes', falseLabel = 'N
           padding-right: 1rem;
         }
         .menuitemtoggle-text {
-          // ...
+          font-weight: 500;
+          min-width: 4rem;
+          text-align: right;
+          color: ${value ? 'var(--hf-color-primary)' : 'var(--hf-color-text-muted)'};
         }
         &:hover {
           cursor: pointer;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--hf-color-surface-hover);
+        }
+        &:focus-visible {
+          outline: none;
+          background: var(--hf-color-surface-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
       onPointerLeave={() => setHint(null)}
       onClick={() => onChange(!value)}
+      type='button'
+      aria-pressed={Boolean(value)}
     >
       <div className='menuitemtoggle-label'>{label}</div>
       <div className='menuitemtoggle-text'>{value ? trueLabel : falseLabel}</div>
-    </div>
+    </button>
   )
 }

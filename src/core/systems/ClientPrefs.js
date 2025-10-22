@@ -5,6 +5,11 @@ import { storage } from '../storage'
 import { isTouch } from '../../client/utils'
 import { isStatsPalette, STATS_PALETTE_DEFAULT } from '../constants/statsPalettes.js'
 
+const THEME_MODES = new Set(['dark', 'light', 'system'])
+const THEME_DEFAULT_MODE = 'dark'
+const THEME_DEFAULT_PRIMARY_HUE = 265
+const THEME_DEFAULT_NEUTRAL_HUE = 220
+
 /**
  * Client Prefs System
  *
@@ -36,11 +41,24 @@ export class ClientPrefs extends System {
       data.v = 5
       data.statsPalette = null
     }
+    if (data.v < 6) {
+      data.v = 6
+      data.themeMode = null
+      data.themeHuePrimary = null
+      data.themeHueNeutral = null
+    }
 
     this.ui = isNumber(data.ui) ? data.ui : isTouch ? 0.9 : 1
     this.actions = isBoolean(data.actions) ? data.actions : true
     this.stats = isBoolean(data.stats) ? data.stats : false
     this.statsPalette = isStatsPalette(data.statsPalette) ? data.statsPalette : STATS_PALETTE_DEFAULT
+    this.themeMode = THEME_MODES.has(data.themeMode) ? data.themeMode : THEME_DEFAULT_MODE
+    this.themeHuePrimary = isNumber(data.themeHuePrimary)
+      ? normalizeHue(data.themeHuePrimary, THEME_DEFAULT_PRIMARY_HUE)
+      : THEME_DEFAULT_PRIMARY_HUE
+    this.themeHueNeutral = isNumber(data.themeHueNeutral)
+      ? normalizeHue(data.themeHueNeutral, THEME_DEFAULT_NEUTRAL_HUE)
+      : THEME_DEFAULT_NEUTRAL_HUE
     this.dpr = isNumber(data.dpr) ? data.dpr : 1
     this.shadows = data.shadows ? data.shadows : isTouch ? 'low' : 'med' // none, low=1, med=2048cascade, high=4096cascade
     this.postprocessing = isBoolean(data.postprocessing) ? data.postprocessing : true
@@ -72,12 +90,16 @@ export class ClientPrefs extends System {
 
   async persist() {
     // a small delay to ensure prefs that crash dont persist (eg old iOS with UHD shadows etc)
+    const start = typeof performance !== 'undefined' ? performance.now() : Date.now()
     await new Promise(resolve => setTimeout(resolve, 2000))
-    storage.set('prefs', {
+    const data = {
       ui: this.ui,
       actions: this.actions,
       stats: this.stats,
       statsPalette: this.statsPalette,
+      themeMode: this.themeMode,
+      themeHuePrimary: this.themeHuePrimary,
+      themeHueNeutral: this.themeHueNeutral,
       dpr: this.dpr,
       shadows: this.shadows,
       postprocessing: this.postprocessing,
@@ -87,6 +109,18 @@ export class ClientPrefs extends System {
       sfx: this.sfx,
       voice: this.voice,
       v: this.v,
+    }
+    storage.set('prefs', data)
+    const end = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    this.world.emit('telemetry', {
+      source: 'prefs',
+      event: 'persisted',
+      duration: end - start,
+      snapshot: {
+        themeMode: this.themeMode,
+        themeHuePrimary: this.themeHuePrimary,
+        themeHueNeutral: this.themeHueNeutral,
+      },
     })
   }
 
@@ -141,7 +175,28 @@ export class ClientPrefs extends System {
     this.modify('voice', value)
   }
 
+  setThemeMode(value) {
+    if (!THEME_MODES.has(value)) {
+      value = THEME_DEFAULT_MODE
+    }
+    this.modify('themeMode', value)
+  }
+
+  setThemeHuePrimary(value) {
+    this.modify('themeHuePrimary', normalizeHue(value, THEME_DEFAULT_PRIMARY_HUE))
+  }
+
+  setThemeHueNeutral(value) {
+    this.modify('themeHueNeutral', normalizeHue(value, THEME_DEFAULT_NEUTRAL_HUE))
+  }
+
   destroy() {
     // ...
   }
+}
+
+function normalizeHue(value, fallback) {
+  if (!isNumber(value)) return fallback
+  const hue = value % 360
+  return hue < 0 ? hue + 360 : hue
 }
