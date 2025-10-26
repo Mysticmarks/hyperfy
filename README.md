@@ -105,6 +105,8 @@ node agent.mjs \
 - **[Website](https://hyperfy.io/)** - Official Hyperfy website
 - **[Sandbox](https://play.hyperfy.xyz/)** - Try Hyperfy in your browser
 - **[Twitter/X](https://x.com/hyperfy_io)** - Latest updates and announcements
+- **[Production Deployment Checklist](docs/deployment/checklist.md)** - Operational hardening requirements for self-hosting
+- **[Hardening Plan](docs/roadmap/hardening-plan.md)** - Milestones for deployment, testing, and UX upgrades
 
 ## 📏 Project Structure
 
