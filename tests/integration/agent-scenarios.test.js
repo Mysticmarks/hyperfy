@@ -32,9 +32,11 @@ class StubWorld extends EventEmitter {
 }
 
 let createdWorld
+let createdWorlds = []
 
 const createNodeClientWorldMock = vi.fn(() => {
   createdWorld = new StubWorld()
+  createdWorlds.push(createdWorld)
   return createdWorld
 })
 
@@ -45,6 +47,7 @@ vi.mock('../../build/world-node-client.js', () => ({
 describe('agent integration scenarios', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    vi.resetModules()
     process.env.HYPERFY_AGENT_WS_URL = 'ws://localhost:3000/ws'
     process.env.HYPERFY_AGENT_NAME = 'TestAgent'
     process.env.HYPERFY_AGENT_CHAT_MESSAGE = 'integration hello'
@@ -58,6 +61,9 @@ describe('agent integration scenarios', () => {
     process.env.HYPERFY_AGENT_AUTO_RECONNECT = 'false'
     process.env.HYPERFY_AGENT_VERBOSE = 'false'
     vi.spyOn(process, 'exit').mockImplementation(() => {})
+    createdWorld = undefined
+    createdWorlds = []
+    createNodeClientWorldMock.mockClear()
   })
 
   afterEach(() => {
@@ -65,6 +71,7 @@ describe('agent integration scenarios', () => {
     vi.useRealTimers()
     vi.restoreAllMocks()
     createdWorld = undefined
+    createdWorlds = []
     delete process.env.HYPERFY_AGENT_WS_URL
     delete process.env.HYPERFY_AGENT_NAME
     delete process.env.HYPERFY_AGENT_CHAT_MESSAGE
@@ -76,9 +83,11 @@ describe('agent integration scenarios', () => {
     delete process.env.HYPERFY_AGENT_WANDER_INTERVAL_MS
     delete process.env.HYPERFY_AGENT_WANDER_PRESS_PROBABILITY
     delete process.env.HYPERFY_AGENT_AUTO_RECONNECT
+    delete process.env.HYPERFY_AGENT_RECONNECT_DELAY_MS
     delete process.env.HYPERFY_AGENT_VERBOSE
     process.removeAllListeners('SIGINT')
     process.removeAllListeners('SIGTERM')
+    vi.resetModules()
   })
 
   it('drives movement, chat, and livekit hooks headlessly', async () => {
@@ -102,5 +111,39 @@ describe('agent integration scenarios', () => {
     vi.advanceTimersByTime(50)
 
     expect(createdWorld?.controls.reset).toHaveBeenCalled()
+  })
+
+  it('auto reconnects after a disconnect when enabled', async () => {
+    process.env.HYPERFY_AGENT_CHAT_ENABLED = 'false'
+    process.env.HYPERFY_AGENT_MOVE_ENABLED = 'false'
+    process.env.HYPERFY_AGENT_AUTO_RECONNECT = 'true'
+    process.env.HYPERFY_AGENT_RECONNECT_DELAY_MS = '1200'
+
+    await import('../../agent.mjs')
+
+    expect(createNodeClientWorldMock).toHaveBeenCalledTimes(1)
+    const firstWorld = createdWorlds[0]
+    expect(firstWorld).toBeDefined()
+
+    await vi.advanceTimersByTimeAsync(0)
+
+    firstWorld?.emit('disconnect', { reason: 'network lost' })
+
+    await vi.advanceTimersByTimeAsync(1199)
+    expect(createNodeClientWorldMock).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(2)
+    expect(createNodeClientWorldMock).toHaveBeenCalledTimes(2)
+
+    const secondWorld = createdWorlds[1]
+    expect(secondWorld).toBeDefined()
+    expect(secondWorld).not.toBe(firstWorld)
+    expect(firstWorld?.destroy).toHaveBeenCalled()
+    expect(firstWorld?.controls.reset).toHaveBeenCalled()
+
+    expect(secondWorld?.initCalls[0]).toMatchObject({
+      wsUrl: 'ws://localhost:3000/ws',
+      name: 'TestAgent',
+    })
   })
 })
