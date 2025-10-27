@@ -2,8 +2,8 @@ import sourceMapSupport from 'source-map-support'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-// read .env files
-import 'dotenv-flow/config'
+// hydrate environment overlays before anything else touches process.env
+import './environment/load-overlay.js'
 
 // support node source maps
 sourceMapSupport.install()

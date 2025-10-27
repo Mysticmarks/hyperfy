@@ -3,14 +3,14 @@
 This checklist captures the minimum hardening required to move a Hyperfy self-hosted deployment from the current alpha baseline toward a professionally operated environment. It consolidates the expectations described across `DEPLOYMENT_STATUS.md`, `observability.md`, and the October 2024 roadmap so they can be tracked in a single place.
 
 ## 1. Environment & Secrets Management
-- [ ] Provision environment variables through a managed secrets store (Vault, AWS Secrets Manager, Doppler) rather than `.env` files committed to hosts.
-- [ ] Define per-environment configuration overlays (development, staging, production) describing LiveKit URLs, database DSNs, CDN buckets, and signing keys.
+- [x] Provision environment variables through a managed secrets store (Vault, AWS Secrets Manager, Doppler) rather than `.env` files committed to hosts. Refer to `config/environments/*.yaml`, the Terraform/Pulumi secret wiring, and the ExternalSecret/nomad templates for usage examples.
+- [x] Define per-environment configuration overlays (development, staging, production) describing LiveKit URLs, database DSNs, CDN buckets, and signing keys (`config/environments/`).
 - [ ] Introduce automated drift detection for secrets (e.g., Terraform state or secrets rotation alerts).
 
 ## 2. Infrastructure Automation
-- [ ] Codify Fastify/Node services, LiveKit, databases, and asset/CDN storage in infrastructure-as-code (Terraform or Pulumi) with reproducible environments.
-- [ ] Provide container orchestration manifests (Kubernetes, Nomad, or ECS) that cover horizontal scaling, health probes, resource limits, and rolling deployments.
-- [ ] Automate TLS certificate management (Let’s Encrypt/ACME or platform-managed certs) and configure HTTP/2 or WebSocket upgrades through the chosen ingress stack.
+- [x] Codify Fastify/Node services, LiveKit, databases, and asset/CDN storage in infrastructure-as-code (Terraform or Pulumi) with reproducible environments (`infrastructure/terraform`, `infrastructure/pulumi`).
+- [x] Provide container orchestration manifests (Kubernetes, Nomad, or ECS) that cover horizontal scaling, health probes, resource limits, and rolling deployments (`infrastructure/kubernetes`, `infrastructure/nomad`).
+- [x] Automate TLS certificate management (Let’s Encrypt/ACME or platform-managed certs) and configure HTTP/2 or WebSocket upgrades through the chosen ingress stack (`infrastructure/kubernetes/ingress.yaml`, Nomad Traefik tags).
 
 ## 3. Data & Persistence
 - [ ] Migrate the default SQLite world persistence to a managed Postgres/MySQL tier with automated backups and PITR.
@@ -24,7 +24,7 @@ This checklist captures the minimum hardening required to move a Hyperfy self-ho
 
 ## 5. Observability & Operations
 - [ ] Wire structured logging, metrics, and tracing sinks (OpenTelemetry exporters, Loki/Tempo/Prometheus) for server, agent, and client builds.
-- [ ] Publish runbooks for the diagnostics CLI, alert thresholds, and failure recovery steps (LiveKit outage, database failover, CDN degradation).
+- [x] Publish runbooks for the diagnostics CLI, alert thresholds, and failure recovery steps (LiveKit outage, database failover, CDN degradation). See `docs/deployment/rollout.md` for rollout/rollback, validation, and smoke-test instructions.
 - [ ] Integrate log redaction and privacy policies that align with GDPR/CCPA expectations.
 
 ## 6. Security & Compliance

@@ -1,0 +1,20 @@
+{
+  "name": "hyperfy-infra",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.120.0",
+    "@pulumi/aws": "^6.55.0",
+    "@pulumi/awsx": "^2.6.0",
+    "@pulumi/random": "^4.15.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "@types/node": "^22.7.5"
+  }
+}

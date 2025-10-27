@@ -1,0 +1,14 @@
+config:
+  aws:region: us-east-1
+  hyperfy:domain: hyperfy.example
+  hyperfy:fastifyImage: ghcr.io/hyperfy-xyz/hyperfy:latest
+  hyperfy:livekitImage: ghcr.io/hyperfy-xyz/hyperfy-livekit:latest
+  hyperfy:simImage: ghcr.io/hyperfy-xyz/hyperfy-sim:latest
+  hyperfy:fastifySecrets: secret://aws-secretsmanager/hyperfy/development/server
+  hyperfy:livekitSecrets: secret://aws-secretsmanager/hyperfy/development/livekit
+  hyperfy:simSecrets: secret://aws-secretsmanager/hyperfy/development/sim
+  hyperfy:apiCertificateArn: arn:aws:acm:us-east-1:123456789012:certificate/example-api
+  hyperfy:livekitCertificateArn: arn:aws:acm:us-east-1:123456789012:certificate/example-livekit
+  hyperfy:simCertificateArn: arn:aws:acm:us-east-1:123456789012:certificate/example-sim
+  hyperfy:cdnCertificateArn: arn:aws:acm:us-east-1:123456789012:certificate/example-cdn
+  hyperfy:databaseUsername: hyperfy_admin
