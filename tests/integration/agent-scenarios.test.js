@@ -1,41 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { EventEmitter } from 'node:events'
-
-class StubWorld extends EventEmitter {
-  constructor() {
-    super()
-    this.initCalls = []
-    this.controls = {
-      simulateButton: vi.fn(),
-      reset: vi.fn(),
-    }
-    this.chat = {
-      send: vi.fn(),
-    }
-    this.destroy = vi.fn()
-    this.livekit = {
-      connect: vi.fn(async () => {
-        this.livekitConnected = true
-      }),
-    }
-    this.livekitConnected = false
-  }
-
-  init(options) {
-    this.initCalls.push(options)
-    setTimeout(() => {
-      this.livekitConnected = true
-      this.emit('livekit-connected', { room: 'stub-room' })
-      this.emit('ready')
-    }, 0)
-  }
-}
+import { loadCaptureFixture } from '../utils/captureFixture'
+import { createAgentWorldAdapter } from '../utils/nodeWorldAdapter'
 
 let createdWorld
 let createdWorlds = []
+let randomQueue = []
+let randomSpy
+let fixtureForTest = loadCaptureFixture('agent-wander')
+
+function setRandomSequence(sequence) {
+  randomQueue = Array.isArray(sequence) ? sequence.slice() : []
+}
 
 const createNodeClientWorldMock = vi.fn(() => {
-  createdWorld = new StubWorld()
+  createdWorld = createAgentWorldAdapter({ fixture: fixtureForTest })
   createdWorlds.push(createdWorld)
   return createdWorld
 })
@@ -64,14 +42,21 @@ describe('agent integration scenarios', () => {
     createdWorld = undefined
     createdWorlds = []
     createNodeClientWorldMock.mockClear()
+    fixtureForTest = loadCaptureFixture('agent-wander')
+    randomSpy = vi.spyOn(Math, 'random').mockImplementation(() => {
+      if (randomQueue.length === 0) return 0.5
+      return randomQueue.shift()
+    })
   })
 
   afterEach(() => {
-    vi.runAllTimers()
+    vi.clearAllTimers()
     vi.useRealTimers()
+    randomSpy?.mockRestore()
     vi.restoreAllMocks()
     createdWorld = undefined
     createdWorlds = []
+    randomQueue = []
     delete process.env.HYPERFY_AGENT_WS_URL
     delete process.env.HYPERFY_AGENT_NAME
     delete process.env.HYPERFY_AGENT_CHAT_MESSAGE
@@ -90,27 +75,39 @@ describe('agent integration scenarios', () => {
     vi.resetModules()
   })
 
-  it('drives movement, chat, and livekit hooks headlessly', async () => {
+  it('replays captured controls and chat with deterministic latency', async () => {
+    const baseFixture = loadCaptureFixture('agent-wander')
+    fixtureForTest = {
+      ...baseFixture,
+      meta: {
+        ...baseFixture.meta,
+        autoplayEvents: true,
+      },
+    }
+
+    process.env.HYPERFY_AGENT_MOVE_ENABLED = 'false'
+    process.env.HYPERFY_AGENT_CHAT_DELAY_MS = '450'
+
     await import('../../agent.mjs')
 
     expect(createNodeClientWorldMock).toHaveBeenCalledTimes(1)
-    expect(createdWorld).toBeDefined()
+    const world = createdWorlds[0]
+    expect(world).toBeDefined()
 
-    vi.advanceTimersByTime(20)
+    await vi.advanceTimersByTimeAsync(1000)
+    await world.waitForReady()
+    await world.untilIdle()
 
-    expect(createdWorld?.initCalls[0]).toMatchObject({
-      wsUrl: 'ws://localhost:3000/ws',
-      name: 'TestAgent',
-    })
-
-    expect(createdWorld?.livekitConnected).toBe(true)
-    expect(createdWorld?.chat.send).toHaveBeenCalledWith('integration hello')
-    expect(createdWorld?.controls.simulateButton).toHaveBeenCalled()
-
-    createdWorld?.emit('disconnect')
-    vi.advanceTimersByTime(50)
-
-    expect(createdWorld?.controls.reset).toHaveBeenCalled()
+    expect(world.telemetry.controls).toEqual([
+      { key: 'keyW', state: 'press' },
+      { key: 'keyW', state: 'release' },
+      { key: 'keyD', state: 'press' },
+      { key: 'keyD', state: 'release' },
+    ])
+    expect(world.telemetry.chat.some(entry => entry.message === 'integration hello')).toBe(true)
+    expect(world.getPhysicsFrame(1)).toEqual(fixtureForTest.physics[1])
+    expect(world.getAnimationFrame(1)).toEqual(fixtureForTest.animation[1])
+    expect(world.telemetry.networkPackets.find(packet => packet.name === 'chatAdded')).toBeTruthy()
   })
 
   it('auto reconnects after a disconnect when enabled', async () => {
@@ -125,9 +122,10 @@ describe('agent integration scenarios', () => {
     const firstWorld = createdWorlds[0]
     expect(firstWorld).toBeDefined()
 
-    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(100)
+    await firstWorld.waitForReady()
 
-    firstWorld?.emit('disconnect', { reason: 'network lost' })
+    firstWorld.emit('disconnect', { reason: 'network lost' })
 
     await vi.advanceTimersByTimeAsync(1199)
     expect(createNodeClientWorldMock).toHaveBeenCalledTimes(1)
@@ -138,12 +136,12 @@ describe('agent integration scenarios', () => {
     const secondWorld = createdWorlds[1]
     expect(secondWorld).toBeDefined()
     expect(secondWorld).not.toBe(firstWorld)
-    expect(firstWorld?.destroy).toHaveBeenCalled()
-    expect(firstWorld?.controls.reset).toHaveBeenCalled()
+    expect(firstWorld.telemetry.destroys).toBeGreaterThanOrEqual(1)
+    expect(firstWorld.telemetry.resets).toBeGreaterThanOrEqual(1)
 
-    expect(secondWorld?.initCalls[0]).toMatchObject({
-      wsUrl: 'ws://localhost:3000/ws',
-      name: 'TestAgent',
-    })
+    await vi.advanceTimersByTimeAsync(100)
+    await secondWorld.waitForReady()
+
+    expect(secondWorld.telemetry.controls.length).toBe(0)
   })
 })

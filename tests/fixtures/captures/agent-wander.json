@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "name": "agent-wander",
+    "seed": "wander-deterministic",
+    "description": "Captured wander cycle used to validate deterministic physics and animation playback.",
+    "autoplayEvents": false
+  },
+  "handshake": {
+    "livekit": {
+      "room": "fixture-room",
+      "participant": "agent-1"
+    }
+  },
+  "latency": {
+    "baseMs": 12,
+    "channels": {
+      "network": [
+        { "offsetMs": 3 },
+        { "offsetMs": 7 }
+      ],
+      "chat": [
+        { "offsetMs": 0 }
+      ],
+      "timeline": [
+        { "offsetMs": 0 },
+        { "offsetMs": 4 },
+        { "offsetMs": -2 },
+        { "offsetMs": 1 },
+        { "offsetMs": 2 }
+      ]
+    }
+  },
+  "events": [
+    { "at": 0, "type": "controls", "key": "keyW", "state": "press" },
+    { "at": 120, "type": "controls", "key": "keyW", "state": "release" },
+    { "at": 180, "type": "controls", "key": "keyD", "state": "press" },
+    { "at": 300, "type": "controls", "key": "keyD", "state": "release" },
+    { "at": 450, "type": "chat", "message": "integration hello" }
+  ],
+  "physics": [
+    { "frame": 0, "time": 0, "position": [0, 1.6, 0], "velocity": [0, 0, 0] },
+    { "frame": 1, "time": 0.12, "position": [0, 1.6, -0.5], "velocity": [0, -0.01, -3.2] },
+    { "frame": 2, "time": 0.3, "position": [0.35, 1.6, -0.75], "velocity": [2.5, 0, -1.8] }
+  ],
+  "animation": [
+    { "frame": 0, "name": "idle", "weight": 1.0 },
+    { "frame": 1, "name": "walk", "weight": 0.85 }
+  ]
+}
