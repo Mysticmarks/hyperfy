@@ -6,15 +6,18 @@ import {
   MenuItemFile,
   MenuItemNumber,
   MenuItemRange,
+  MenuSection,
   MenuItemSwitch,
   MenuItemText,
   MenuItemTextarea,
   MenuItemToggle,
   MenuItemStatic,
+  MenuItemShortcut,
 } from './Menu'
 import { usePermissions } from './usePermissions'
 import { useFullscreen } from './useFullscreen'
 import { STATS_PALETTE_OPTIONS } from '../../core/constants/statsPalettes.js'
+import { bindingToHumanReadable } from '../utils/inputBindings'
 
 export function MenuMain({ world, page: initialPage = 'index' }) {
   const [pages, setPages] = useState(() => [initialPage || 'index'])
@@ -39,6 +42,7 @@ export function MenuMain({ world, page: initialPage = 'index' }) {
   if (page === 'audio') Page = MenuMainAudio
   if (page === 'world') Page = MenuMainWorld
   if (page === 'help') Page = MenuMainHelp
+  if (page === 'controls') Page = MenuMainControls
   return <Page world={world} pop={pop} push={push} />
 }
 
@@ -55,6 +59,12 @@ function MenuMainIndex({ world, pop, push }) {
     <Menu title='Menu'>
       <MenuItemText label='Name' hint='Change your display name' value={name} onChange={changeName} />
       <MenuItemBtn label='UI' hint='Change your interface settings' onClick={() => push('ui')} nav />
+      <MenuItemBtn
+        label='Controls'
+        hint='Remap keyboard shortcuts and toggles'
+        onClick={() => push('controls')}
+        nav
+      />
       <MenuItemBtn label='Graphics' hint='Change your device graphics settings' onClick={() => push('graphics')} nav />
       <MenuItemBtn label='Audio' hint='Change your audio volume' onClick={() => push('audio')} nav />
       <MenuItemBtn
@@ -81,6 +91,12 @@ function MenuMainUI({ world, pop, push }) {
   const [themeMode, setThemeMode] = useState(world.prefs.themeMode)
   const [themeHuePrimary, setThemeHuePrimary] = useState(world.prefs.themeHuePrimary)
   const [themeHueNeutral, setThemeHueNeutral] = useState(world.prefs.themeHueNeutral)
+  const [motionMode, setMotionMode] = useState(world.prefs.motionMode)
+  const [typographyScale, setTypographyScale] = useState(world.prefs.typographyScale)
+  const [highContrast, setHighContrast] = useState(world.prefs.highContrast)
+  const [accessibleFocus, setAccessibleFocus] = useState(world.prefs.accessibleFocus)
+  const [colorblindFilter, setColorblindFilter] = useState(world.prefs.colorblindFilter)
+  const [textToSpeech, setTextToSpeech] = useState(world.prefs.textToSpeech)
   const { isBuilder } = usePermissions(world)
   useEffect(() => {
     const onChange = changes => {
@@ -91,12 +107,43 @@ function MenuMainUI({ world, pop, push }) {
       if (changes.themeMode) setThemeMode(changes.themeMode.value)
       if (changes.themeHuePrimary) setThemeHuePrimary(changes.themeHuePrimary.value)
       if (changes.themeHueNeutral) setThemeHueNeutral(changes.themeHueNeutral.value)
+      if (changes.motionMode) setMotionMode(changes.motionMode.value)
+      if (changes.typographyScale) setTypographyScale(changes.typographyScale.value)
+      if (changes.highContrast) setHighContrast(changes.highContrast.value)
+      if (changes.accessibleFocus) setAccessibleFocus(changes.accessibleFocus.value)
+      if (changes.colorblindFilter) setColorblindFilter(changes.colorblindFilter.value)
+      if (changes.textToSpeech) setTextToSpeech(changes.textToSpeech.value)
     }
     world.prefs.on('change', onChange)
     return () => {
       world.prefs.off('change', onChange)
     }
   }, [])
+  const motionOptions = useMemo(
+    () => [
+      { label: 'System', value: 'system' },
+      { label: 'Comfortable', value: 'comfortable' },
+      { label: 'Reduced', value: 'reduced' },
+    ],
+    []
+  )
+  const typographyOptions = useMemo(
+    () => [
+      { label: 'Standard', value: 'standard' },
+      { label: 'Large', value: 'large' },
+      { label: 'Extra large', value: 'xlarge' },
+    ],
+    []
+  )
+  const colorblindOptions = useMemo(
+    () => [
+      { label: 'None', value: 'none' },
+      { label: 'Protanopia', value: 'protanopia' },
+      { label: 'Deuteranopia', value: 'deuteranopia' },
+      { label: 'Tritanopia', value: 'tritanopia' },
+    ],
+    []
+  )
   return (
     <Menu title='Menu'>
       <MenuItemBack hint='Go back to the main menu' onClick={pop} />
@@ -147,6 +194,53 @@ function MenuMainUI({ world, pop, push }) {
         value={themeHueNeutral}
         onChange={value => world.prefs.setThemeHueNeutral(value)}
       />
+      <MenuSection label='Motion & Typography' />
+      <MenuItemSwitch
+        label='Motion preset'
+        hint='Adjust easing tokens for inspector, dialogs, and overlays'
+        options={motionOptions}
+        value={motionMode}
+        onChange={value => world.prefs.setMotionMode(value)}
+      />
+      <MenuItemSwitch
+        label='Typography scale'
+        hint='Increase base font size for improved readability'
+        options={typographyOptions}
+        value={typographyScale}
+        onChange={value => world.prefs.setTypographyScale(value)}
+      />
+      <MenuSection label='Accessibility' />
+      <MenuItemToggle
+        label='High contrast mode'
+        hint='Strengthen focus rings, hover states, and text contrast'
+        trueLabel='On'
+        falseLabel='Off'
+        value={highContrast}
+        onChange={value => world.prefs.setHighContrast(value)}
+      />
+      <MenuItemToggle
+        label='Persistent focus rings'
+        hint='Keeps focus outlines visible for keyboard users'
+        trueLabel='Visible'
+        falseLabel='Hidden'
+        value={accessibleFocus}
+        onChange={value => world.prefs.setAccessibleFocus(value)}
+      />
+      <MenuItemSwitch
+        label='Colorblind filter'
+        hint='Apply calibrated filters to improve hue separation'
+        options={colorblindOptions}
+        value={colorblindFilter}
+        onChange={value => world.prefs.setColorblindFilter(value)}
+      />
+      <MenuItemToggle
+        label='Text-to-speech guidance'
+        hint='Narrate tours and help center announcements using speech synthesis'
+        trueLabel='On'
+        falseLabel='Off'
+        value={textToSpeech}
+        onChange={value => world.prefs.setTextToSpeech(value)}
+      />
       {isBuilder && (
         <MenuItemToggle
           label='Build Prompts'
@@ -172,12 +266,82 @@ function MenuMainUI({ world, pop, push }) {
   )
 }
 
-function MenuMainHelp({ pop }) {
+function MenuMainControls({ world, pop }) {
+  const [bindings, setBindings] = useState({ ...world.prefs.inputBindings })
+  useEffect(() => {
+    const onChange = changes => {
+      if (changes.inputBindings) {
+        setBindings({ ...world.prefs.inputBindings })
+      }
+    }
+    world.prefs.on('change', onChange)
+    return () => {
+      world.prefs.off('change', onChange)
+    }
+  }, [])
+  const shortcutEntries = [
+    {
+      key: 'openMenu',
+      label: 'Toggle menu',
+      hint: 'Open or close the creator menu overlay',
+    },
+    {
+      key: 'openCommandPalette',
+      label: 'Command palette',
+      hint: 'Search for commands, scenes, and onboarding tours',
+    },
+    {
+      key: 'openHelp',
+      label: 'Contextual help',
+      hint: 'Open the searchable help center',
+    },
+    {
+      key: 'showShortcuts',
+      label: 'Keyboard overlay',
+      hint: 'Show or hide the global keyboard shortcuts overlay',
+    },
+    {
+      key: 'toggleTours',
+      label: 'Toggle tours',
+      hint: 'Start or stop the guided tour overlay',
+    },
+  ]
+  return (
+    <Menu title='Controls'>
+      <MenuItemBack hint='Go back to the main menu' onClick={pop} />
+      <MenuSection label='Keyboard shortcuts' />
+      {shortcutEntries.map(entry => (
+        <MenuItemShortcut
+          key={entry.key}
+          label={entry.label}
+          hint={entry.hint}
+          value={bindings[entry.key]}
+          onChange={value => world.prefs.setInputBinding(entry.key, value)}
+        />
+      ))}
+      <MenuSection label='Tips' />
+      <MenuItemStatic
+        label='Reset to default'
+        value='While recording, press Backspace to restore the original shortcut.'
+      />
+      <MenuItemStatic
+        label='Current bindings snapshot'
+        value={shortcutEntries
+          .map(entry => `${entry.label}: ${bindingToHumanReadable(bindings[entry.key])}`)
+          .join(' • ')}
+      />
+    </Menu>
+  )
+}
+
+function MenuMainHelp({ world, pop }) {
+  const bindings = world.prefs.inputBindings
   const shortcuts = [
-    { label: 'Open menu', value: 'Esc' },
-    { label: 'Toggle menu', value: 'Ctrl/Cmd + Shift + P' },
-    { label: 'Help overlay', value: 'Shift + ?' },
-    { label: 'Apps pane', value: 'Ctrl/Cmd + Shift + A' },
+    { label: 'Toggle menu', value: bindingToHumanReadable(bindings.openMenu) },
+    { label: 'Command palette', value: bindingToHumanReadable(bindings.openCommandPalette) },
+    { label: 'Help center', value: bindingToHumanReadable(bindings.openHelp) },
+    { label: 'Keyboard overlay', value: bindingToHumanReadable(bindings.showShortcuts) },
+    { label: 'Toggle tours', value: bindingToHumanReadable(bindings.toggleTours) },
   ]
   return (
     <Menu title='Help & Shortcuts'>
@@ -188,12 +352,16 @@ function MenuMainHelp({ pop }) {
       ))}
       <MenuSection label='Accessibility' />
       <MenuItemStatic
-        label='Focus management'
-        value='Overlays keep focus until closed so keyboard navigation stays predictable.'
+        label='Tours and dialogs'
+        value='Guided tours respect reduced motion and announce steps via text-to-speech when enabled.'
       />
       <MenuItemStatic
         label='Tab navigation'
-        value='Use Tab and Shift+Tab to move between controls when panes are open.'
+        value='Use Tab and Shift+Tab to move between controls when panes are open. Focus rings stay visible when enabled in Preferences.'
+      />
+      <MenuItemStatic
+        label='Color adjustments'
+        value='Set contrast, typography scale, and colorblind filters under Preferences → UI.'
       />
     </Menu>
   )

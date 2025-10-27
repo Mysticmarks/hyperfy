@@ -52,10 +52,24 @@ svg {
   --hf-color-primary: hsl(var(--hf-primary-hue) 88% 68%);
   --hf-color-primary-soft: hsl(var(--hf-primary-hue) 82% 60% / 0.18);
   --hf-color-focus: hsl(var(--hf-primary-hue) 92% 72%);
+  --hf-color-focus-ring: var(--hf-color-focus);
+  --hf-focus-ring-width: 0.1875rem;
+  --hf-focus-ring-offset: 0.125rem;
   --hf-color-surface-hover: rgba(255, 255, 255, 0.06);
+  --hf-color-interaction-hover: rgba(255, 255, 255, 0.06);
+  --hf-color-interaction-active: rgba(255, 255, 255, 0.12);
   --hf-shadow-soft: 0 1.1rem 3.2rem rgba(2, 6, 23, 0.42);
   --hf-shadow-hard: 0 0.75rem 2.2rem rgba(2, 6, 23, 0.6);
-  --hf-transition-medium: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  --hf-motion-duration-fast: 120ms;
+  --hf-motion-duration-medium: 180ms;
+  --hf-motion-duration-slow: 280ms;
+  --hf-motion-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --hf-font-size: 16px;
+  --hf-font-size-sm: 14px;
+  --hf-font-size-lg: 18px;
+  --hf-font-heading: 1.2rem;
+  --hf-font-title: 1.4rem;
+  --hf-colorblind-filter: none;
 }
 
 :root[data-theme='light'] {
@@ -82,11 +96,23 @@ html {
   -webkit-font-smoothing: antialiased;
   font-family: 'Rubik', sans-serif;
   font-optical-sizing: auto;
-  font-size: 16px;
+  font-size: var(--hf-font-size);
   font-weight: 400;
   font-style: normal;
   background-color: var(--hf-color-bg);
   color: var(--hf-color-text);
+  transition: background-color var(--hf-motion-duration-medium) var(--hf-motion-ease-standard),
+    color var(--hf-motion-duration-medium) var(--hf-motion-ease-standard);
+  filter: var(--hf-colorblind-filter);
+}
+
+body:focus-visible {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: var(--hf-focus-ring-width) solid var(--hf-color-focus-ring);
+  outline-offset: var(--hf-focus-ring-offset);
 }
 
 input,
