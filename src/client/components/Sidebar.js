@@ -291,7 +291,8 @@ function Section({ active, top, bottom, children }) {
 
 function Btn({ disabled, suspended, active, muted, children, onClick, ...props }) {
   return (
-    <div
+    <button
+      type='button'
       className={cls('sidebar-btn', { disabled, suspended, active, muted })}
       css={css`
         width: 2.75rem;
@@ -299,24 +300,31 @@ function Btn({ disabled, suspended, active, muted, children, onClick, ...props }
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
+        color: ${active ? 'var(--hf-color-heading)' : 'var(--hf-color-text-muted)'};
         position: relative;
+        border: none;
+        background: none;
+        border-radius: 0.75rem;
+        transition: color var(--hf-motion-duration-fast) var(--hf-motion-ease-standard),
+          background-color var(--hf-motion-duration-fast) var(--hf-motion-ease-standard);
         .sidebar-btn-dot {
           display: none;
           position: absolute;
-          top: 0.8rem;
+          top: 0.65rem;
           right: 0.2rem;
-          width: 0.3rem;
-          height: 0.3rem;
-          border-radius: 0.15rem;
-          background: white;
+          width: 0.35rem;
+          height: 0.35rem;
+          border-radius: 0.2rem;
+          background: var(--hf-color-primary);
         }
-        &:hover {
-          cursor: ${disabled ? 'default' : 'pointer'};
-          color: white;
+        &:hover:not(.disabled),
+        &:focus-visible {
+          cursor: pointer;
+          color: var(--hf-color-heading);
+          background: var(--hf-color-interaction-hover);
         }
         &.active {
-          color: white;
+          color: var(--hf-color-heading);
           .sidebar-btn-dot {
             display: block;
           }
@@ -324,11 +332,10 @@ function Btn({ disabled, suspended, active, muted, children, onClick, ...props }
         &.suspended {
           .sidebar-btn-dot {
             display: block;
-            /* background: rgb(26, 151, 241); */
           }
         }
         &.disabled {
-          color: rgba(255, 255, 255, 0.3);
+          color: rgba(255, 255, 255, 0.35);
           pointer-events: none;
         }
         &.muted {
@@ -336,11 +343,13 @@ function Btn({ disabled, suspended, active, muted, children, onClick, ...props }
         }
       `}
       {...props}
+      disabled={disabled}
+      aria-pressed={active}
       onClick={disabled ? undefined : onClick}
     >
       {children}
       <div className='sidebar-btn-dot' />
-    </div>
+    </button>
   )
 }
 
@@ -352,12 +361,15 @@ function Content({ width = '20rem', hidden, children }) {
         width: ${width};
         pointer-events: auto;
         .sidebar-content-main {
-          background: rgba(11, 10, 21, 0.85);
-          border: 0.0625rem solid #2a2b39;
-          backdrop-filter: blur(5px);
+          background: var(--hf-color-surface);
+          border: 1px solid var(--hf-color-border);
+          backdrop-filter: blur(0.6rem);
           border-radius: 1rem;
           display: flex;
           align-items: stretch;
+          box-shadow: var(--hf-shadow-soft);
+          transition: background-color var(--hf-motion-duration-medium) var(--hf-motion-ease-standard),
+            border-color var(--hf-motion-duration-medium) var(--hf-motion-ease-standard);
         }
         &.hidden {
           opacity: 0;
@@ -406,13 +418,15 @@ function Hint() {
       className='hint'
       css={css`
         margin-top: 0.25rem;
-        background: rgba(11, 10, 21, 0.85);
-        border: 0.0625rem solid #2a2b39;
-        backdrop-filter: blur(5px);
+        background: var(--hf-color-surface-raised);
+        border: 1px solid var(--hf-color-border);
+        backdrop-filter: blur(0.4rem);
         border-radius: 1rem;
         min-width: 0;
         padding: 1rem;
-        font-size: 0.9375rem;
+        font-size: var(--hf-font-size);
+        color: var(--hf-color-text);
+        transition: background-color var(--hf-motion-duration-medium) var(--hf-motion-ease-standard);
       `}
     >
       <span>{hint}</span>
@@ -426,7 +440,7 @@ function Group({ label }) {
       <div
         css={css`
           height: 0.0625rem;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--hf-color-border);
           margin: 0.6rem 0;
         `}
       />
@@ -437,6 +451,8 @@ function Group({ label }) {
             line-height: 1;
             padding: 0.75rem 0 0.75rem 1rem;
             margin-top: -0.6rem;
+            color: var(--hf-color-text-muted);
+            font-size: var(--hf-font-size-sm);
           `}
         >
           {label}

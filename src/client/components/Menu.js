@@ -10,6 +10,7 @@ import { Curve } from '../../core/extras/Curve'
 import { Portal } from './Portal'
 import { CurvePane } from './CurvePane'
 import { useFocusTrap } from './useFocusTrap'
+import { bindingToHumanReadable } from '../utils/inputBindings'
 
 const MenuContext = createContext()
 
@@ -23,20 +24,20 @@ export function Menu({ title, blur, children }) {
         ref={menuRef}
         className='menu'
         css={css`
-          pointer-events: auto;
-          display: flex;
-          flex-direction: column;
-          min-width: 22rem;
-          max-height: calc(100vh - 4rem);
-          background: var(--hf-color-surface);
-          border: 1px solid var(--hf-color-border);
-          border-radius: 1rem;
-          box-shadow: var(--hf-shadow-hard);
-          opacity: ${blur ? 0.35 : 1};
-          transition: opacity var(--hf-transition-medium);
-          font-size: 1rem;
-          color: var(--hf-color-text);
-          overflow: hidden;
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        min-width: 22rem;
+        max-height: calc(100vh - 4rem);
+        background: var(--hf-color-surface);
+        border: 1px solid var(--hf-color-border);
+        border-radius: 1rem;
+        box-shadow: var(--hf-shadow-hard);
+        opacity: ${blur ? 0.35 : 1};
+        transition: opacity var(--hf-motion-duration-medium) var(--hf-motion-ease-standard);
+        font-size: var(--hf-font-size);
+        color: var(--hf-color-text);
+        overflow: hidden;
           &:focus-visible {
             outline: 0.2rem solid var(--hf-color-focus);
             outline-offset: 0.15rem;
@@ -48,9 +49,10 @@ export function Menu({ title, blur, children }) {
             text-overflow: ellipsis;
             overflow: hidden;
             span {
-              font-size: 1.3rem;
+              font-size: var(--hf-font-title);
               font-weight: 600;
               color: var(--hf-color-heading);
+              letter-spacing: 0.01em;
             }
           }
           .menu-items {
@@ -81,7 +83,7 @@ function MenuHint({ text }) {
       css={css`
         margin-top: 0.2rem;
         padding: 0.875rem 1.25rem;
-        font-size: 0.95rem;
+        font-size: var(--hf-font-size-sm);
         line-height: 1.4;
         background-color: var(--hf-color-surface-raised);
         border-top: 0.1rem solid var(--hf-color-border);
@@ -103,7 +105,7 @@ export function MenuItemBack({ hint, onClick }) {
         align-items: center;
         height: 2.5rem;
         padding: 0 1.25rem;
-        font-size: 1rem;
+        font-size: var(--hf-font-size);
         background: none;
         border: none;
         width: 100%;
@@ -115,13 +117,14 @@ export function MenuItemBack({ hint, onClick }) {
         .menuback-label {
           flex: 1;
         }
+        transition: background-color var(--hf-motion-duration-fast) var(--hf-motion-ease-standard),
+          color var(--hf-motion-duration-fast) var(--hf-motion-ease-standard);
         &:hover {
           cursor: pointer;
-          background: var(--hf-color-surface-hover);
+          background: var(--hf-color-interaction-hover);
         }
         &:focus-visible {
-          outline: none;
-          background: var(--hf-color-surface-hover);
+          background: var(--hf-color-interaction-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
@@ -154,7 +157,7 @@ export function MenuSection({ label }) {
     <div
       css={css`
         padding: 0.25rem 1.25rem;
-        font-size: 0.75rem;
+        font-size: var(--hf-font-size-sm);
         font-weight: 500;
         color: var(--hf-color-text-muted);
         white-space: nowrap;
@@ -183,19 +186,19 @@ export function MenuItemBtn({ label, hint, nav, onClick }) {
           text-overflow: ellipsis;
           overflow: hidden;
         }
-        &:hover {
-          cursor: pointer;
-          background: var(--hf-color-surface-hover);
-        }
         background: none;
         border: none;
         color: inherit;
         text-align: left;
         width: 100%;
         gap: 0.4rem;
+        transition: background-color var(--hf-motion-duration-fast) var(--hf-motion-ease-standard);
+        &:hover {
+          cursor: pointer;
+          background: var(--hf-color-interaction-hover);
+        }
         &:focus-visible {
-          outline: none;
-          background: var(--hf-color-surface-hover);
+          background: var(--hf-color-interaction-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
@@ -617,10 +620,11 @@ export function MenuItemRange({ label, hint, min = 0, max = 1, step = 0.05, inst
           padding-right: 1rem;
         }
         .menuitemrange-text {
-          font-size: 0.7rem;
+          font-size: var(--hf-font-size-sm);
           margin-right: 0.5rem;
           opacity: 0;
           color: var(--hf-color-text-muted);
+          transition: opacity var(--hf-motion-duration-fast) var(--hf-motion-ease-standard);
         }
         .menuitemrange-track {
           width: 7rem;
@@ -639,21 +643,21 @@ export function MenuItemRange({ label, hint, min = 0, max = 1, step = 0.05, inst
           border-radius: 0.1rem;
           width: ${barWidthPercentage}%;
         }
+        transition: background-color var(--hf-motion-duration-fast) var(--hf-motion-ease-standard);
         &:hover {
-          background-color: var(--hf-color-surface-hover);
+          background-color: var(--hf-color-interaction-hover);
           .menuitemrange-text {
             opacity: 1;
           }
         }
         &:focus-visible {
-          outline: none;
-          background-color: var(--hf-color-surface-hover);
+          background-color: var(--hf-color-interaction-hover);
           .menuitemrange-text {
             opacity: 1;
           }
         }
         &:focus-within {
-          background-color: var(--hf-color-surface-hover);
+          background-color: var(--hf-color-interaction-hover);
           .menuitemrange-text {
             opacity: 1;
           }
@@ -1105,6 +1109,8 @@ export function MenuItemToggle({ label, hint, trueLabel = 'Yes', falseLabel = 'N
         border: none;
         color: inherit;
         text-align: left;
+        transition: background-color var(--hf-motion-duration-fast) var(--hf-motion-ease-standard),
+          color var(--hf-motion-duration-fast) var(--hf-motion-ease-standard);
         .menuitemtoggle-label {
           flex: 1;
           white-space: nowrap;
@@ -1118,13 +1124,10 @@ export function MenuItemToggle({ label, hint, trueLabel = 'Yes', falseLabel = 'N
           text-align: right;
           color: ${value ? 'var(--hf-color-primary)' : 'var(--hf-color-text-muted)'};
         }
-        &:hover {
-          cursor: pointer;
-          background: var(--hf-color-surface-hover);
-        }
+        &:hover,
         &:focus-visible {
-          outline: none;
-          background: var(--hf-color-surface-hover);
+          cursor: pointer;
+          background: var(--hf-color-interaction-hover);
         }
       `}
       onPointerEnter={() => setHint(hint)}
@@ -1137,4 +1140,252 @@ export function MenuItemToggle({ label, hint, trueLabel = 'Yes', falseLabel = 'N
       <div className='menuitemtoggle-text'>{value ? trueLabel : falseLabel}</div>
     </button>
   )
+}
+
+export function MenuItemShortcut({ label, hint, value, onChange }) {
+  const setHint = useContext(MenuContext)
+  const [recording, setRecording] = useState(false)
+  const [display, setDisplay] = useState(value)
+  const [error, setError] = useState(null)
+  useEffect(() => {
+    setDisplay(value)
+    setError(null)
+  }, [value])
+  useEffect(() => {
+    if (!recording) return
+    const handle = event => {
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.key === 'Escape') {
+        setRecording(false)
+        return
+      }
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        setRecording(false)
+        onChange('')
+        return
+      }
+      const parts = []
+      const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform)
+      if (event.metaKey || (!isMac && event.ctrlKey)) {
+        parts.push(isMac ? 'cmd' : 'ctrl')
+      } else if (event.ctrlKey) {
+        parts.push('ctrl')
+      }
+      if (event.altKey) parts.push('alt')
+      if (event.shiftKey) parts.push('shift')
+      const key = resolveShortcutKey(event)
+      if (!key) {
+        setError('Unsupported key — try letters, numbers, arrows, or F-keys.')
+        return
+      }
+      setError(null)
+      parts.push(key)
+      const shortcut = parts.join('+')
+      if (shortcut) {
+        onChange(shortcut)
+        setDisplay(shortcut)
+        setRecording(false)
+      }
+    }
+    const handleBlur = () => {
+      setRecording(false)
+    }
+    window.addEventListener('keydown', handle, true)
+    window.addEventListener('blur', handleBlur)
+    return () => {
+      window.removeEventListener('keydown', handle, true)
+      window.removeEventListener('blur', handleBlur)
+    }
+  }, [recording, onChange])
+  const text = recording ? error || 'Press keys…' : bindingToHumanReadable(display) || 'Not set'
+  return (
+    <button
+      className='menuitemshortcut'
+      css={css`
+        display: flex;
+        align-items: center;
+        height: 2.5rem;
+        padding: 0 1.25rem;
+        width: 100%;
+        background: none;
+        border: none;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        transition: background-color var(--hf-motion-duration-fast) var(--hf-motion-ease-standard);
+        .menuitemshortcut-label {
+          flex: 1;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          padding-right: 1rem;
+        }
+        .menuitemshortcut-value {
+          font-size: var(--hf-font-size-sm);
+          color: ${recording
+            ? error
+              ? 'var(--hf-color-text)'
+              : 'var(--hf-color-primary)'
+            : 'var(--hf-color-text-muted)'};
+          ${error ? 'font-style: italic;' : ''}
+        }
+        &:hover,
+        &:focus-visible {
+          background: var(--hf-color-interaction-hover);
+        }
+      `}
+      onPointerEnter={() => setHint(hint)}
+      onPointerLeave={() => setHint(null)}
+      onClick={() => {
+        setRecording(true)
+        setError(null)
+      }}
+      type='button'
+      aria-pressed={recording}
+    >
+      <div className='menuitemshortcut-label'>{label}</div>
+      <div className='menuitemshortcut-value'>{text}</div>
+    </button>
+  )
+}
+
+const MODIFIER_KEYS = new Set(['control', 'shift', 'meta', 'alt', 'os', 'hyper', 'super', 'fn'])
+const NAMED_KEY_ALIASES = new Map([
+  [' ', 'space'],
+  ['spacebar', 'space'],
+  ['escape', 'escape'],
+  ['esc', 'escape'],
+])
+const SUPPORTED_NAMED_KEYS = new Set([
+  'enter',
+  'tab',
+  'escape',
+  'space',
+  'arrowup',
+  'arrowdown',
+  'arrowleft',
+  'arrowright',
+  'home',
+  'end',
+  'pageup',
+  'pagedown',
+  'insert',
+  'delete',
+])
+
+function resolveShortcutKey(event) {
+  const fromCode = normalizeCode(event.code)
+  if (fromCode) return fromCode
+  let key = (event.key || '').toLowerCase()
+  if (NAMED_KEY_ALIASES.has(key)) {
+    key = NAMED_KEY_ALIASES.get(key)
+  }
+  if (!key || MODIFIER_KEYS.has(key) || key === 'dead' || key === 'unidentified') {
+    return null
+  }
+  if (SUPPORTED_NAMED_KEYS.has(key)) {
+    return key
+  }
+  if (/^f(1[0-2]|[1-9])$/.test(key)) {
+    return key
+  }
+  if (key.length === 1) {
+    return key
+  }
+  return null
+}
+
+const CODE_KEY_ALIASES = new Map([
+  ['KeyA', 'a'],
+  ['KeyB', 'b'],
+  ['KeyC', 'c'],
+  ['KeyD', 'd'],
+  ['KeyE', 'e'],
+  ['KeyF', 'f'],
+  ['KeyG', 'g'],
+  ['KeyH', 'h'],
+  ['KeyI', 'i'],
+  ['KeyJ', 'j'],
+  ['KeyK', 'k'],
+  ['KeyL', 'l'],
+  ['KeyM', 'm'],
+  ['KeyN', 'n'],
+  ['KeyO', 'o'],
+  ['KeyP', 'p'],
+  ['KeyQ', 'q'],
+  ['KeyR', 'r'],
+  ['KeyS', 's'],
+  ['KeyT', 't'],
+  ['KeyU', 'u'],
+  ['KeyV', 'v'],
+  ['KeyW', 'w'],
+  ['KeyX', 'x'],
+  ['KeyY', 'y'],
+  ['KeyZ', 'z'],
+  ['Digit0', '0'],
+  ['Digit1', '1'],
+  ['Digit2', '2'],
+  ['Digit3', '3'],
+  ['Digit4', '4'],
+  ['Digit5', '5'],
+  ['Digit6', '6'],
+  ['Digit7', '7'],
+  ['Digit8', '8'],
+  ['Digit9', '9'],
+  ['Backquote', '`'],
+  ['Minus', '-'],
+  ['Equal', '='],
+  ['BracketLeft', '['],
+  ['BracketRight', ']'],
+  ['Backslash', '\\'],
+  ['Semicolon', ';'],
+  ['Quote', "'"],
+  ['Comma', ','],
+  ['Period', '.'],
+  ['Slash', '/'],
+  ['NumpadDivide', '/'],
+  ['NumpadMultiply', '*'],
+  ['NumpadSubtract', '-'],
+  ['NumpadAdd', '+'],
+  ['NumpadDecimal', '.'],
+  ['NumpadEnter', 'enter'],
+  ['Numpad0', '0'],
+  ['Numpad1', '1'],
+  ['Numpad2', '2'],
+  ['Numpad3', '3'],
+  ['Numpad4', '4'],
+  ['Numpad5', '5'],
+  ['Numpad6', '6'],
+  ['Numpad7', '7'],
+  ['Numpad8', '8'],
+  ['Numpad9', '9'],
+  ['Space', 'space'],
+  ['Enter', 'enter'],
+  ['Tab', 'tab'],
+  ['Escape', 'escape'],
+  ['ArrowUp', 'arrowup'],
+  ['ArrowDown', 'arrowdown'],
+  ['ArrowLeft', 'arrowleft'],
+  ['ArrowRight', 'arrowright'],
+  ['Home', 'home'],
+  ['End', 'end'],
+  ['PageUp', 'pageup'],
+  ['PageDown', 'pagedown'],
+  ['Insert', 'insert'],
+  ['Delete', 'delete'],
+])
+
+function normalizeCode(code) {
+  if (!code) return null
+  if (CODE_KEY_ALIASES.has(code)) {
+    return CODE_KEY_ALIASES.get(code)
+  }
+  if (code.startsWith('F')) {
+    const upper = code.toUpperCase()
+    if (/^F(1[0-2]|[1-9])$/.test(upper)) {
+      return upper.toLowerCase()
+    }
+  }
+  return null
 }
