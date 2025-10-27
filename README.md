@@ -38,19 +38,29 @@ Hyperfy is an open-source framework for building interactive 3D virtual worlds. 
 git clone https://github.com/hyperfy-xyz/hyperfy.git my-world
 cd my-world
 
-# Copy example environment settings
-cp .env.example .env
-
 # Install dependencies
 npm install
 
-# Start the development server
+# Configure secrets (Vault/Doppler/AWS SM) according to config/environments/development.yaml
+# and expose them before starting the dev server
+export HYPERFY_ENVIRONMENT=development
+# Example: doppler run -- npm run dev
 npm run dev
 ```
 
 ### Docker Deployment
 
 For containerized deployment, check [DOCKER.md](DOCKER.md) for detailed instructions.
+
+### Environment overlays & managed secrets
+
+Hyperfy no longer reads `.env` files. Instead, each environment is described in
+`config/environments/<name>.yaml`, which maps every variable to a managed secret
+or static value. Export `HYPERFY_ENVIRONMENT=<name>` before starting the server so
+`src/server/environment/load-overlay.js` can hydrate defaults, then rely on your
+secret store (Vault, AWS Secrets Manager, Doppler, etc.) to inject the sensitive
+values. See [docs/deployment/rollout.md](docs/deployment/rollout.md) for rollout
+and rollback steps.
 
 ## 🤖 Automation Agent
 

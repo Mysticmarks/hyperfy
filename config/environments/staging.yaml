@@ -1,0 +1,59 @@
+environment: staging
+description: Pre-production overlay mirroring production scale with lower quotas.
+variables:
+  - name: HYPERFY_ENVIRONMENT
+    source: static
+    value: staging
+  - name: FASTIFY_PUBLIC_URL
+    source: static
+    value: https://api.staging.hyperfy.example
+  - name: FASTIFY_JWT_SECRET
+    source: secret
+    provider: aws-secretsmanager
+    secret: hyperfy/staging/server
+    field: jwt_secret
+  - name: FASTIFY_ADMIN_CODE
+    source: secret
+    provider: aws-secretsmanager
+    secret: hyperfy/staging/server
+    field: admin_code
+  - name: LIVEKIT_URL
+    source: static
+    value: wss://livekit.staging.hyperfy.example
+  - name: LIVEKIT_API_KEY
+    source: secret
+    provider: aws-secretsmanager
+    secret: hyperfy/staging/livekit
+    field: api_key
+  - name: LIVEKIT_API_SECRET
+    source: secret
+    provider: aws-secretsmanager
+    secret: hyperfy/staging/livekit
+    field: api_secret
+  - name: DATABASE_URL
+    source: secret
+    provider: aws-secretsmanager
+    secret: hyperfy/staging/database
+    field: url
+  - name: CDN_BUCKET_NAME
+    source: static
+    value: hyperfy-staging-assets
+  - name: CDN_PUBLIC_URL
+    source: static
+    value: https://cdn.staging.hyperfy.example
+  - name: CDN_SIGNING_KEY
+    source: secret
+    provider: aws-secretsmanager
+    secret: hyperfy/staging/cdn
+    field: signing_key
+  - name: SIM_RPC_ENDPOINT
+    source: static
+    value: https://sim.staging.hyperfy.example
+  - name: SIM_CLUSTER_TOKEN
+    source: secret
+    provider: aws-secretsmanager
+    secret: hyperfy/staging/sim
+    field: cluster_token
+  - name: OBSERVABILITY_OTLP_ENDPOINT
+    source: static
+    value: https://otlp.staging.hyperfy.example

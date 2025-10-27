@@ -12,16 +12,33 @@ production-style deployments.
 
 ## 1. Prepare configuration
 
-Create your environment file before building the image:
+Review `config/environments/production.yaml` (or the overlay matching your target)
+and ensure every secret exists in your managed store. Hyperfy reads
+`HYPERFY_ENVIRONMENT` to decide which overlay to hydrate and expects the remaining
+sensitive values to come from Vault, Doppler, AWS Secrets Manager, etc.
+
+Example using Doppler to inject secrets when running the container:
 
 ```bash
-cp .env.example .env
-# Edit .env with the values you need (domain, secrets, feature flags, etc.)
+doppler run --project hyperfy --config production -- \
+  docker run -d -p 3000:3000 \
+  -e HYPERFY_ENVIRONMENT=production \
+  -e PUBLIC_BASE_URL=https://api.hyperfy.example \
+  --name hyperfy \
+  hyperfy
 ```
 
-The runtime expects `DOMAIN`, `PORT`, `ASSETS_DIR`, and public URLs to be
-defined. These values can come either from the `.env` file you mount into the
-container or from `docker run -e` flags.
+If you prefer AWS Secrets Manager, generate an env file on the fly:
+
+```bash
+docker run -d -p 3000:3000 \
+  --env-file <(aws secretsmanager get-secret-value \
+    --secret-id hyperfy/production/server \
+    --query 'SecretString' --output text | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]') \
+  -e HYPERFY_ENVIRONMENT=production \
+  --name hyperfy \
+  hyperfy
+```
 
 ## 2. Build the image
 
@@ -38,13 +55,10 @@ You only need to rebuild when dependencies or build tooling change. Code inside
 docker run -d -p 3000:3000 \
   -v "$(pwd)/src:/app/src" \
   -v "$(pwd)/world:/app/world" \
-  -v "$(pwd)/.env:/app/.env" \
-  -e DOMAIN=demo.hyperfy.host \
-  -e PORT=3000 \
-  -e ASSETS_DIR=/world/assets \
-  -e PUBLIC_WS_URL=https://demo.hyperfy.host/ws \
-  -e PUBLIC_API_URL=https://demo.hyperfy.host/api \
-  -e PUBLIC_ASSETS_URL=https://demo.hyperfy.host/assets \
+  -e HYPERFY_ENVIRONMENT=development \
+  -e PUBLIC_BASE_URL=http://localhost:3000 \
+  -e PUBLIC_WS_URL=ws://localhost:3000/ws \
+  -e PUBLIC_ASSETS_URL=http://localhost:3000/assets \
   --name hyperfy \
   hyperfy
 ```
@@ -53,8 +67,8 @@ This command:
 
 - Runs Hyperfy in detached mode (`-d`) and maps the container’s port 3000 to the
   host
-- Mounts local `src/`, `world/`, and `.env` files so code and content updates
-  are reflected immediately
+- Mounts local `src/` and `world/` directories so code and content updates are
+  reflected immediately
 - Injects the key environment variables required for public access URLs
 
 Adjust the domain, ports, and URLs to match your deployment target. The
@@ -91,18 +105,16 @@ services:
     image: hyperfy
     ports:
       - "3000:3000"
-    env_file:
-      - .env
     environment:
-      DOMAIN: demo.hyperfy.host
-      ASSETS_DIR: /world/assets
+      HYPERFY_ENVIRONMENT: production
       PUBLIC_WS_URL: https://demo.hyperfy.host/ws
       PUBLIC_API_URL: https://demo.hyperfy.host/api
       PUBLIC_ASSETS_URL: https://demo.hyperfy.host/assets
     volumes:
       - ./src:/app/src
       - ./world:/app/world
-      - ./.env:/app/.env
+    secrets:
+      - doppler-production
 ```
 
 Bring the stack up or down with:
@@ -111,6 +123,10 @@ Bring the stack up or down with:
 docker compose up -d
 docker compose down
 ```
+
+Where `doppler-production` (or an equivalent secret definition) is declared under
+`secrets:` in your Compose file, pointing to a CLI command or file that pulls the
+managed secrets at runtime.
 
 ## Cleanup
 

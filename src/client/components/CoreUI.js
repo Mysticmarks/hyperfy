@@ -1,5 +1,5 @@
 import { css } from '@firebolt-dev/css'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageSquareTextIcon, RefreshCwIcon, SendHorizonalIcon } from 'lucide-react'
 
 import { AvatarPane } from './AvatarPane'
@@ -15,6 +15,119 @@ import { MenuApp } from './MenuApp'
 import { ChevronDoubleUpIcon, HandIcon } from './Icons'
 import { Sidebar } from './Sidebar'
 import { applyThemeFromPrefs, watchSystemTheme } from './theme'
+import { CommandPalette } from './CommandPalette'
+import { ShortcutOverlay } from './ShortcutOverlay'
+import { HelpCenter } from './HelpCenter'
+import { TourGuide } from './TourGuide'
+import { matchesBinding } from '../utils/inputBindings'
+import { BuilderMotionCanvas } from './BuilderMotionCanvas'
+
+const INSPECTOR_PANES = new Set(['world', 'apps', 'app', 'script', 'nodes', 'meta', 'prefs'])
+
+const TOUR_DEFINITIONS = {
+  inspector: {
+    id: 'inspector-intro',
+    title: 'Inspector walkthrough',
+    steps: [
+      {
+        title: 'Adjust visual styles confidently',
+        body: 'Use theme hue sliders and typography scale options to tune accessible palettes. Updated focus rings, hover tokens, and motion preferences instantly preview here.',
+        hint: 'Keyboard users can tab through controls. Focus rings stay visible when accessibility focus is enabled.',
+      },
+      {
+        title: 'Motion tokens drive transitions',
+        body: 'Inspector panels respect motion tokens—dial in comfortable or reduced motion and the builder UI will adapt easing and timing globally.',
+      },
+      {
+        title: 'Interaction states stay consistent',
+        body: 'Buttons, toggles, and dialogs all inherit hover, active, and focus states so creators know when changes are safe to commit.',
+      },
+    ],
+  },
+  dialogs: {
+    id: 'dialog-tour',
+    title: 'Dialog essentials',
+    steps: [
+      {
+        title: 'Accessible dialogs',
+        body: 'Dialogs trap focus, honour reduced motion, and expose intent to assistive tech. Confirm prompts announce context and keyboard hints.',
+      },
+      {
+        title: 'Command palette & help',
+        body: 'Press Ctrl/Cmd+K to open the command palette, Shift+/ to view contextual help, or Shift+? to show every shortcut overlay.',
+      },
+    ],
+  },
+}
+
+const HELP_ARTICLES = [
+  {
+    id: 'themes-accessibility',
+    title: 'Customising themes for accessibility',
+    body: 'Use Preferences → Theme to tweak hue, high-contrast mode, typography scale, and motion presets. All inspector and dialog transitions follow these tokens automatically.',
+    tags: ['theme', 'accessibility', 'design system'],
+    cta: 'Open theme preferences',
+    onSelect: world => world.ui.togglePane('prefs'),
+  },
+  {
+    id: 'input-remapping',
+    title: 'Remap your input shortcuts',
+    body: 'Open Preferences → Controls to bind new shortcuts for menu, command palette, tours, and help. Bindings update live—no reload required.',
+    tags: ['keyboard', 'bindings', 'productivity'],
+    cta: 'Edit input bindings',
+    onSelect: world => world.ui.togglePane('prefs'),
+  },
+  {
+    id: 'guided-tours',
+    title: 'Guided tours overview',
+    body: 'Tours highlight new creator flows. Restart tours from the command palette by running “Restart onboarding tour”.',
+    tags: ['onboarding'],
+    cta: 'Start inspector tour',
+    onSelect: (_, startTour) => startTour('inspector'),
+  },
+  {
+    id: 'builder-motion',
+    title: 'Builder dashboard transitions',
+    body: 'The builder dashboard now ships with high-fidelity shader based fades and CSS transforms tuned to stay within 5ms budgets on mid-tier GPUs.',
+    tags: ['builder', 'motion'],
+  },
+]
+
+const HELP_LINKS = [
+  {
+    title: 'Theme preferences',
+    description: 'Jump straight to the theme pane in preferences.',
+    onSelect: world => world.ui.togglePane('prefs'),
+  },
+  {
+    title: 'Open inspector',
+    description: 'Focus the inspector to edit active entities.',
+    onSelect: world => world.ui.togglePane('world'),
+  },
+  {
+    title: 'Restart onboarding tour',
+    description: 'Replay the inspector walkthrough from the beginning.',
+    onSelect: (_, startTour) => startTour('inspector'),
+  },
+]
+
+const SHORTCUT_SECTIONS = (bindings = {}) => [
+  {
+    title: 'Navigation',
+    shortcuts: [
+      { label: 'Toggle menu', shortcut: bindings.openMenu },
+      { label: 'Command palette', shortcut: bindings.openCommandPalette },
+      { label: 'Contextual help', shortcut: bindings.openHelp },
+    ],
+  },
+  {
+    title: 'Discoverability',
+    shortcuts: [
+      { label: 'Shortcuts overlay', shortcut: bindings.showShortcuts },
+      { label: 'Toggle tours', shortcut: bindings.toggleTours },
+    ],
+  },
+]
 
 export function CoreUI({ world }) {
   const ref = useRef()
@@ -27,6 +140,163 @@ export function CoreUI({ world }) {
   const [appControl, setAppControl] = useState(null)
   const [appsMounted, setAppsMounted] = useState(() => world.ui.state.apps ?? false)
   const [menuMounted, setMenuMounted] = useState(() => Boolean(world.ui.state.menu))
+  const [bindings, setBindings] = useState(() => ({ ...world.prefs.inputBindings }))
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [activeTourKey, setActiveTourKey] = useState(null)
+  const [tourStep, setTourStep] = useState(0)
+  const [textToSpeech, setTextToSpeech] = useState(world.prefs.textToSpeech)
+  const [builderActive, setBuilderActive] = useState(world.builder.enabled)
+  const [motionModePreference, setMotionModePreference] = useState(world.prefs.motionMode)
+  const activeTour = activeTourKey ? TOUR_DEFINITIONS[activeTourKey] : null
+  const activeTourStep = activeTour?.steps?.[tourStep]
+
+  const startTour = useCallback(
+    key => {
+      if (!TOUR_DEFINITIONS[key]) return
+      setActiveTourKey(key)
+      setTourStep(0)
+      const definition = TOUR_DEFINITIONS[key]
+      if (!world.prefs.toursSeenSet?.has(definition.id)) {
+        world.prefs.markTourSeen(definition.id)
+      }
+    },
+    [world]
+  )
+
+  const endTour = useCallback(() => {
+    setActiveTourKey(null)
+    setTourStep(0)
+  }, [])
+
+  const toggleTours = useCallback(() => {
+    if (activeTour) {
+      endTour()
+      return
+    }
+    startTour('inspector')
+  }, [activeTour, startTour, endTour])
+
+  const speak = useCallback(
+    text => {
+      if (!textToSpeech) return
+      if (typeof window === 'undefined' || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return
+      const trimmed = (text || '').trim()
+      if (!trimmed) return
+      try {
+        window.speechSynthesis.cancel()
+        const utterance = new window.SpeechSynthesisUtterance(trimmed)
+        utterance.rate = 1
+        window.speechSynthesis.speak(utterance)
+      } catch (err) {
+        console.warn('speech synthesis unavailable', err)
+      }
+    },
+    [textToSpeech]
+  )
+
+  const helpQuickLinks = useMemo(
+    () =>
+      HELP_LINKS.map(link => ({
+        title: link.title,
+        description: link.description,
+        onSelect: () => {
+          link.onSelect(world, startTour)
+          setHelpOpen(false)
+        },
+      })),
+    [world, startTour, setHelpOpen]
+  )
+
+  const helpArticles = useMemo(
+    () =>
+      HELP_ARTICLES.map(article => ({
+        ...article,
+        onSelect: article.onSelect
+          ? () => {
+              article.onSelect(world, startTour)
+              setHelpOpen(false)
+            }
+          : undefined,
+      })),
+    [world, startTour, setHelpOpen]
+  )
+
+  const commandPaletteCommands = useMemo(
+    () => [
+      {
+        id: 'toggle-menu',
+        title: 'Toggle menu',
+        description: 'Open or close the core menu overlay.',
+        shortcut: bindings.openMenu,
+        tags: ['navigation'],
+        action: () => world.ui.toggleMenu('main'),
+      },
+      {
+        id: 'open-help',
+        title: 'Open help center',
+        description: 'Launch contextual help and searchable docs.',
+        shortcut: bindings.openHelp,
+        tags: ['help', 'documentation'],
+        action: () => {
+          setHelpOpen(true)
+          setCommandPaletteOpen(false)
+        },
+      },
+      {
+        id: 'show-shortcuts',
+        title: 'Show keyboard shortcuts overlay',
+        description: 'Display all remappable shortcuts.',
+        shortcut: bindings.showShortcuts,
+        tags: ['keyboard'],
+        action: () => {
+          setShortcutsOpen(true)
+          setCommandPaletteOpen(false)
+        },
+      },
+      {
+        id: 'start-tour',
+        title: activeTour ? 'Close active tour' : 'Start inspector tour',
+        description: activeTour
+          ? 'Dismiss the currently running tour.'
+          : 'Walk through inspector affordances with narrated steps.',
+        shortcut: bindings.toggleTours,
+        tags: ['onboarding'],
+        action: () => {
+          if (activeTour) {
+            endTour()
+          } else {
+            startTour('inspector')
+          }
+        },
+      },
+    ],
+    [bindings, world, activeTour, startTour, endTour]
+  )
+
+  const shortcutSections = useMemo(() => SHORTCUT_SECTIONS(bindings), [bindings])
+
+  const handleCommandRun = useCallback(cmd => {
+    cmd.action?.()
+  }, [])
+
+  const handleTourNext = useCallback(() => {
+    if (!activeTour) {
+      endTour()
+      return
+    }
+    if (tourStep >= activeTour.steps.length - 1) {
+      endTour()
+      return
+    }
+    setTourStep(step => Math.min(activeTour.steps.length - 1, step + 1))
+  }, [activeTour, tourStep, endTour])
+
+  const handleTourBack = useCallback(() => {
+    if (!activeTour) return
+    setTourStep(step => Math.max(0, step - 1))
+  }, [activeTour])
   const queuePrefTelemetry = useMemo(() => {
     let pendingKeys = new Set()
     let scheduled = false
@@ -177,6 +447,24 @@ export function CoreUI({ world }) {
   }, [world])
 
   useEffect(() => {
+    const onChange = changes => {
+      if (changes.inputBindings) {
+        setBindings({ ...world.prefs.inputBindings })
+      }
+      if (changes.textToSpeech) {
+        setTextToSpeech(Boolean(changes.textToSpeech.value))
+      }
+      if (changes.motionMode) {
+        setMotionModePreference(changes.motionMode.value)
+      }
+    }
+    world.prefs.on('change', onChange)
+    return () => {
+      world.prefs.off('change', onChange)
+    }
+  }, [world])
+
+  useEffect(() => {
     const entries = []
     const onTelemetry = payload => {
       entries.push({ timestamp: Date.now(), ...payload })
@@ -191,6 +479,91 @@ export function CoreUI({ world }) {
       delete world.telemetry
     }
   }, [world])
+
+  useEffect(() => {
+    const onBuildMode = state => {
+      setBuilderActive(Boolean(state))
+    }
+    world.on('build-mode', onBuildMode)
+    return () => {
+      world.off('build-mode', onBuildMode)
+    }
+  }, [world])
+
+  useEffect(() => {
+    if (!ready) return
+    if (activeTourKey) return
+    const inspectorTour = TOUR_DEFINITIONS.inspector
+    if (ui.active && INSPECTOR_PANES.has(ui.pane) && inspectorTour) {
+      if (!world.prefs.toursSeenSet || !world.prefs.toursSeenSet.has(inspectorTour.id)) {
+        startTour('inspector')
+      }
+    }
+  }, [ready, ui, activeTourKey, startTour, world])
+
+  useEffect(() => {
+    if (!confirm) return
+    if (activeTourKey) return
+    const dialogTour = TOUR_DEFINITIONS.dialogs
+    if (!dialogTour) return
+    if (world.prefs.toursSeenSet && world.prefs.toursSeenSet.has(dialogTour.id)) return
+    startTour('dialogs')
+  }, [confirm, activeTourKey, startTour, world])
+
+  useEffect(() => {
+    if (helpOpen) {
+      speak('Help center opened. Use the search field to filter tutorials or explore quick links on the right.')
+    }
+  }, [helpOpen, speak])
+
+  useEffect(() => {
+    if (activeTour && activeTourStep) {
+      speak(`${activeTour.title}. ${activeTourStep.title}. ${activeTourStep.body}`)
+    }
+  }, [activeTour, activeTourStep, speak])
+
+  useEffect(() => {
+    const handleKeydown = event => {
+      if (event.defaultPrevented) return
+      const tagName = event.target?.tagName
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA') return
+      if (matchesBinding(event, bindings.openCommandPalette)) {
+        event.preventDefault()
+        setCommandPaletteOpen(current => !current)
+        setHelpOpen(false)
+        setShortcutsOpen(false)
+        return
+      }
+      if (matchesBinding(event, bindings.openHelp)) {
+        event.preventDefault()
+        setHelpOpen(prev => {
+          const next = !prev
+          if (!prev) {
+            setCommandPaletteOpen(false)
+          }
+          return next
+        })
+        return
+      }
+      if (matchesBinding(event, bindings.showShortcuts)) {
+        event.preventDefault()
+        setShortcutsOpen(prev => {
+          const next = !prev
+          if (!prev) {
+            setCommandPaletteOpen(false)
+          }
+          return next
+        })
+        return
+      }
+      if (matchesBinding(event, bindings.toggleTours)) {
+        event.preventDefault()
+        toggleTours()
+      }
+    }
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
+  }, [bindings, toggleTours, shortcutsOpen])
   return (
     <div
       ref={ref}
@@ -204,6 +577,7 @@ export function CoreUI({ world }) {
       {disconnected && <Disconnected />}
       {!ui.reticleSuppressors && <Reticle world={world} />}
       {<Toast world={world} />}
+      <BuilderMotionCanvas active={builderActive && motionModePreference !== 'reduced'} />
       {ready && <ActionsBlock world={world} />}
       {ready && <Sidebar world={world} ui={ui} />}
       {ready && <Chat world={world} />}
@@ -292,6 +666,21 @@ export function CoreUI({ world }) {
           </div>
         </div>
       )}
+      <HelpCenter
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        articles={helpArticles}
+        quickLinks={helpQuickLinks}
+        shortcutBindings={bindings}
+      />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        commands={commandPaletteCommands}
+        onRun={handleCommandRun}
+      />
+      <ShortcutOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} shortcuts={shortcutSections} />
+      <TourGuide tour={activeTour} stepIndex={tourStep} onNext={handleTourNext} onBack={handleTourBack} onDismiss={endTour} />
       <div id='core-ui-portal' />
     </div>
   )

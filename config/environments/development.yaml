@@ -1,0 +1,69 @@
+environment: development
+description: Local overlay for engineers running Hyperfy with ephemeral backing services.
+variables:
+  - name: HYPERFY_ENVIRONMENT
+    source: static
+    value: development
+    description: Signals the runtime to load this overlay.
+  - name: FASTIFY_PUBLIC_URL
+    source: static
+    value: http://localhost:3000
+    description: Base URL for local Fastify traffic.
+  - name: FASTIFY_JWT_SECRET
+    source: secret
+    provider: doppler
+    secret: hyperfy/development/server
+    field: jwt_secret
+    description: JWT signing secret for API tokens.
+  - name: FASTIFY_ADMIN_CODE
+    source: secret
+    provider: doppler
+    secret: hyperfy/development/server
+    field: admin_code
+    description: Admin elevation token used by the `/admin` chat command.
+  - name: LIVEKIT_URL
+    source: static
+    value: ws://localhost:7880
+    description: Local LiveKit websocket endpoint.
+  - name: LIVEKIT_API_KEY
+    source: secret
+    provider: doppler
+    secret: hyperfy/development/livekit
+    field: api_key
+  - name: LIVEKIT_API_SECRET
+    source: secret
+    provider: doppler
+    secret: hyperfy/development/livekit
+    field: api_secret
+  - name: DATABASE_URL
+    source: secret
+    provider: doppler
+    secret: hyperfy/development/database
+    field: url
+    description: Connection string for development Postgres.
+  - name: CDN_BUCKET_NAME
+    source: static
+    value: hyperfy-dev-assets
+    description: Bucket used for local asset pushes (minio, s3 mock, etc.).
+  - name: CDN_PUBLIC_URL
+    source: static
+    value: http://localhost:9000/hyperfy-dev-assets
+    description: Public HTTP endpoint for served static assets.
+  - name: CDN_SIGNING_KEY
+    source: secret
+    provider: doppler
+    secret: hyperfy/development/cdn
+    field: signing_key
+  - name: SIM_RPC_ENDPOINT
+    source: static
+    value: http://localhost:7000
+    description: Control plane endpoint for authoritative simulation servers.
+  - name: SIM_CLUSTER_TOKEN
+    source: secret
+    provider: doppler
+    secret: hyperfy/development/sim
+    field: cluster_token
+  - name: OBSERVABILITY_OTLP_ENDPOINT
+    source: static
+    value: http://localhost:4318
+    description: Local OTLP collector for traces and metrics.

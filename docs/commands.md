@@ -4,9 +4,9 @@ There are a few commands that can be used by entering them in the chat.
 
 ### `/admin <code>`
 
-If your world has an admin code set, the only way to become an admin is to use this command with your code (see your .env file).
+If your world has an admin code set, the only way to become an admin is to use this command with your code (see your managed secret for `FASTIFY_ADMIN_CODE`).
 
-If your .env doesn't have an ADMIN_CODE set, then all players are treated as an admin.
+If no admin code is present in the configured secrets, then all players are treated as an admin.
 
 ### `/spawn set`
 

@@ -1,0 +1,3 @@
+name: hyperfy-infra
+runtime: nodejs
+main: ./index.ts

@@ -1,0 +1,52 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hyperfy
+  namespace: hyperfy-apps
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: livekit
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.hyperfy.example
+        - livekit.hyperfy.example
+        - sim.hyperfy.example
+      secretName: hyperfy-tls
+  rules:
+    - host: api.hyperfy.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fastify-api
+                port:
+                  name: http
+    - host: livekit.hyperfy.example
+      http:
+        paths:
+          - path: /?(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: livekit
+                port:
+                  name: http
+    - host: sim.hyperfy.example
+      http:
+        paths:
+          - path: /?
+            pathType: Prefix
+            backend:
+              service:
+                name: sim
+                port:
+                  name: grpc
