@@ -9,6 +9,7 @@ This document outlines concrete engineering initiatives that would move Hyperfy 
 - **Realtime networking upgrades** – Extend `ServerNetwork` with replication throttling, prioritised interest management, and configurable tick rates per zone so updates scale with population instead of broadcasting every packet to all sockets.【F:src/core/systems/ServerNetwork.js†L84-L124】【F:src/core/systems/Server.js†L3-L30】
   - _Status update:_ Player replication now respects per-zone throttling budgets with distance-based prioritisation, configurable via new `SERVER_NETWORK_*` settings, dramatically reducing cross-zone broadcast chatter.【F:src/core/systems/ServerNetwork.js†L31-L214】【F:src/server/config.js†L108-L167】
 - **Resilience & observability** – Introduce health probes, autoscaling signals, and crash recovery for each service. Capture structured telemetry for tick time, bandwidth, and error rates to feed capacity planning and incident response.【F:src/server/index.js†L139-L181】
+  - _Status update:_ Background compute now runs through the worker-thread task pool and `ServerTaskQueue`, enabling parallel quest evaluation and metrics aggregation while preserving single-threaded simulation safety.【F:src/server/runtime/TaskPool.js†L1-L141】【F:src/core/systems/ServerTaskQueue.js†L1-L38】
 
 ## 2. Persistence & Progression
 
@@ -20,6 +21,7 @@ This document outlines concrete engineering initiatives that would move Hyperfy 
 
 - **Combat & abilities** – Build authoritative combat resolvers, cooldown management, and effect pipelines with deterministic rollback, rather than trusting client-reported actions.
 - **Quest & narrative tools** – Provide designers with node-based quest editors and live scripting hooks (building on the existing app system) so narrative content can ship rapidly.【F:README.md†L12-L99】
+  - _Status update:_ `ServerQuests` orchestrates progress tracking with deterministic worker-backed simulations, giving narrative designers a baseline quest state machine tied to persistence and player inventory services.【F:src/core/systems/ServerQuests.js†L1-L92】【F:src/core/systems/ServerCharacters.js†L213-L280】
 - **Social layers** – Expand chat, guilds, parties, and matchmaking using scalable messaging backends, plus moderation workflows for reports, muting, and ban appeals.
 
 ## 4. World Building & Content Pipeline
@@ -32,6 +34,7 @@ This document outlines concrete engineering initiatives that would move Hyperfy 
 
 - **High-fidelity renderer** – Augment the WebGL renderer with WebGPU or native clients to unlock large crowds, advanced lighting, and platform-specific optimisations beyond the current AO/bloom stack.【F:src/core/systems/ClientGraphics.js†L1-L200】【F:docs/DEPLOYMENT_STATUS.md†L15-L35】
 - **Input & accessibility** – Layer on action combat controls, controller support, remappable keybinds, and accessibility features (UI scaling, color blindness filters) for broad audiences.
+  - _Status update:_ The command palette now ships with keyboard navigation, fuzzy ranking, and accent-aware highlighting, setting the foundation for richer accessibility tooling and theming integrations.【F:src/client/components/CommandPalette.js†L1-L233】【F:src/client/components/commandPaletteUtils.js†L1-L56】
 - **Performance budgets** – Enforce strict per-frame budgets through frame graph instrumentation, asset streaming hints, and fallback quality tiers for low-end devices.
 
 ## 6. DevOps & Compliance

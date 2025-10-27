@@ -300,7 +300,41 @@ export class ServerCharacters extends System {
       }
       await this.db('character_quests').insert(row)
     }
-    const entry = mapQuestRow(row)
+    let entry = mapQuestRow(row)
+    const questSystem = this.world?.quests
+    if (questSystem) {
+      try {
+        const { state: enriched } = await questSystem.enrichQuestState(
+          {
+            questId,
+            status: entry.status,
+            progress: entry.progress,
+          },
+          { events: Array.isArray(data.events) ? data.events : [] }
+        )
+        if (enriched) {
+          const didChangeStatus = enriched.status && enriched.status !== entry.status
+          const didChangeProgress = JSON.stringify(enriched.progress ?? {}) !== JSON.stringify(entry.progress ?? {})
+          entry = {
+            ...entry,
+            status: enriched.status ?? entry.status,
+            progress: enriched.progress ?? entry.progress,
+          }
+          if (didChangeStatus || didChangeProgress) {
+            await this.db('character_quests')
+              .where({ id: row.id })
+              .update({
+                status: entry.status,
+                progress: JSON.stringify(entry.progress ?? {}),
+                updatedAt: now,
+              })
+            row = { ...row, status: entry.status, progress: JSON.stringify(entry.progress ?? {}), updatedAt: now }
+          }
+        }
+      } catch (error) {
+        console.warn('[ServerCharacters] Failed to enrich quest state', { questId, error })
+      }
+    }
     const character = await this.getCharacterById(characterId)
     if (character) {
       const index = character.quests.findIndex(quest => quest.questId === questId)

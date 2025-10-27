@@ -30,6 +30,7 @@
     "node-client:dev": "node scripts/build-node-client.mjs --dev",
     "node-client:build": "node scripts/build-node-client.mjs",
     "diagnostics": "node scripts/server-diagnostics.mjs",
+    "ops:preflight": "node scripts/ops/preflight.mjs",
     "lint": "eslint . --ext .js,.jsx",
     "lint:fix": "eslint . --ext .js,.jsx --fix",
     "format": "prettier --write .",
