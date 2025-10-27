@@ -29,6 +29,7 @@ To progress toward the requested outcome, the following engineering roadmap is r
 4. **Server architecture** – Design authoritative MMO servers (zone/instance management, replication, entity interpolation, persistence) and implement stress-tested networking code with robust security.
 5. **Tooling & build pipeline** – Expand build scripts to manage asset compilation, shading, LOD baking, and environment configuration. Add automated tests, CI, and deployment workflows.
 6. **Performance engineering** – Profile hot paths, introduce spatial partitioning, ECS optimizations, and culling strategies appropriate for large worlds. Accept realistic complexity bounds; aim for O(n log n) or better with respect to entity counts, rather than impossible O(1).
+7. **Benchmark-driven scaling plan** – Track progress against the concrete concurrency and tick budgets defined in `docs/scalability-plan.md`, using the included prototypes to measure gaps and prioritize optimizations.
 
 ## 5. Conclusion
 
