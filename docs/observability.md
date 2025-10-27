@@ -66,3 +66,27 @@ prefer not to pass `--url` on every invocation.
 - Export `/metrics` into your existing observability stack (Prometheus, DataDog,
   etc.) for alerting. The JSON schema is stable and designed to be easy to map
   into custom dashboards.
+
+## Automation and Alerting
+
+The diagnostics CLI implemented in [`scripts/server-diagnostics.mjs`](../scripts/server-diagnostics.mjs)
+underpins the observability automation referenced in the deployment OKRs. Use
+`npm run diagnostics` inside CI smoke tests and attach its JSON output to
+`OPS-OBS-*` issues. Planned GitHub Actions (see `OPS-REL-001`) should execute
+this script against staging deployments after each rollout.
+
+Recommended alert thresholds mirror those in the
+[Diagnostics CLI runbook](./runbooks/diagnostics-cli.md). When thresholds are
+breached, create incidents tied to the appropriate OKR IDs so program tracking
+remains consistent.
+
+## Linked Runbooks and Troubleshooting
+
+- [Diagnostics CLI Runbook](./runbooks/diagnostics-cli.md)
+- [LiveKit Outage Runbook](./runbooks/livekit-outage.md)
+- [Database Failover Runbook](./runbooks/database-failover.md)
+- [CDN Degradation Runbook](./runbooks/cdn-degradation.md)
+- [Troubleshooting Index](./troubleshooting/README.md)
+
+These documents ensure observability expectations stay synchronized with the
+automation delivered across deployment and MMO initiatives.
