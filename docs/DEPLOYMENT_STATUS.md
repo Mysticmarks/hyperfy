@@ -10,14 +10,14 @@ This document summarizes the current capabilities of the Hyperfy repository and 
 
 ## 2. Verification Activities Performed
 
-- `npm run build` – Successfully executed the production build pipeline through `scripts/build.mjs`. The build completes but warns that no environment files were found; populating `.env` values is still required for real deployments.【8f7930†L1-L6】
+- `npm run build` – Successfully executed the production build pipeline through `scripts/build.mjs`. The build completes but warns that no managed secrets were loaded; operators must supply values via the new overlays (`config/environments/<env>.yaml`) and secret stores before deploying.【8f7930†L1-L6】
 
 ## 3. Limitations Relative to the Requested Guarantees
 
 1. **4K UHD+/cinematic fidelity** – The renderer targets WebGL (likely WebGL 2) with standard post-processing. There is no evidence of support for Nanite-style micro-polygon rendering, hardware ray tracing, or advanced PBR material workflows. Achieving that fidelity would necessitate a custom renderer or a WebGPU rewrite.
 2. **"All processes are O(1)"** – The codebase performs world updates, rendering, physics, and networking with non-constant complexity. Games inherently process entities proportional to their count. Guaranteeing O(1) for all operations is mathematically impossible for MMO-scale simulations. The existing architecture already follows practical optimizations (LOD, octrees, etc.), but cannot satisfy the requested asymptotic bound.
 3. **Realistic human movement/MMORPG behavior** – Avatar systems, animation blending, inverse kinematics, server-side authority, combat loops, quest logic, anti-cheat, and persistence layers are not implemented in this repository. Those features must be designed and built; simply enabling existing systems will not produce AAA-quality character behavior.
-4. **Deployment readiness** – While `npm run build` succeeds, actual deployment requires configured environment variables (`.env`), CDN/static hosting for assets, WebSocket signaling infrastructure (e.g., LiveKit), and production observability. None of these are automatically provisioned by the repository.
+4. **Deployment readiness** – While `npm run build` succeeds, actual deployment requires managed environment variables (via the overlays/secret stores), CDN/static hosting for assets, WebSocket signaling infrastructure (e.g., LiveKit), and production observability. None of these are automatically provisioned by the repository.
 
 ## 4. Recommended Next Steps
 

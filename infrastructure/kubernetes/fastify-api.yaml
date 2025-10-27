@@ -1,0 +1,165 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: fastify-api
+  namespace: hyperfy-apps
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws
+    kind: ClusterSecretStore
+  target:
+    name: fastify-api-env
+    creationPolicy: Owner
+  data:
+    - secretKey: FASTIFY_JWT_SECRET
+      remoteRef:
+        key: hyperfy/production/server
+        property: jwt_secret
+    - secretKey: FASTIFY_ADMIN_CODE
+      remoteRef:
+        key: hyperfy/production/server
+        property: admin_code
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: hyperfy/production/database
+        property: url
+    - secretKey: CDN_SIGNING_KEY
+      remoteRef:
+        key: hyperfy/production/cdn
+        property: signing_key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastify-api
+  namespace: hyperfy-apps
+  labels:
+    app: fastify-api
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: fastify-api
+  template:
+    metadata:
+      labels:
+        app: fastify-api
+    spec:
+      serviceAccountName: fastify-api
+      containers:
+        - name: fastify-api
+          image: ghcr.io/hyperfy-xyz/hyperfy:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PUBLIC_BASE_URL
+              value: https://api.hyperfy.example
+          envFrom:
+            - secretRef:
+                name: fastify-api-env
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 12
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fastify-api
+  namespace: hyperfy-apps
+  labels:
+    app: fastify-api
+spec:
+  type: ClusterIP
+  selector:
+    app: fastify-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fastify-api
+  namespace: hyperfy-apps
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: fastify-api
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fastify-api
+  namespace: hyperfy-apps
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: fastify-api
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fastify-api
+  namespace: hyperfy-apps
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/hyperfy-fastify

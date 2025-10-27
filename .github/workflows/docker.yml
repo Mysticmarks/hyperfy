@@ -1,6 +1,8 @@
 name: Build docker image
 permissions:
+  contents: read
   packages: write
+  id-token: write
 
 on:
   push:
@@ -12,11 +14,32 @@ on:
       - 'v*.*.*'
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.4
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.11.0
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run lint and formatting checks
+        run: npm run check
+      - name: Run full test suite
+        run: npm run test
+      - name: Build project
+        run: npm run build
+
+  build:
+    runs-on: ubuntu-latest
+    needs: verify
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -27,7 +50,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{github.repository}}
+          images: ghcr.io/${{ github.repository }}
           tags: |
             type=schedule
             type=ref,event=branch
@@ -38,12 +61,42 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build and push
+      - name: Build and push image
+        id: build
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: false
           build-args: |
             COMMIT_HASH=${{ github.sha }}
+      - name: Generate SBOM
+        id: sbom
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          artifact-name: hyperfy-sbom-${{ github.sha }}
+          format: spdx-json
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Sign image
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          IMAGE_NAME: ghcr.io/${{ github.repository }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE_NAME}@${IMAGE_DIGEST}"
+      - name: Attach SBOM attestation
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          IMAGE_NAME: ghcr.io/${{ github.repository }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          SBOM_PATH: ${{ steps.sbom.outputs.sbom-path }}
+        run: cosign attest --yes --predicate "$SBOM_PATH" --type spdx "${IMAGE_NAME}@${IMAGE_DIGEST}"
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: ${{ steps.sbom.outputs.sbom-path }}

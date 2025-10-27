@@ -1,6 +1,6 @@
 .DS_Store
+# Legacy .env files are intentionally unsupported but still ignored to avoid accidental commits
 .env*
-!.env.example
 *.notes.md
 localstorage.json
 .notes/

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hyperfy-system
+  labels:
+    app.kubernetes.io/name: hyperfy-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hyperfy-apps
+  labels:
+    app.kubernetes.io/name: hyperfy-apps
