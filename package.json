@@ -31,6 +31,7 @@
     "node-client:build": "node scripts/build-node-client.mjs",
     "diagnostics": "node scripts/server-diagnostics.mjs",
     "ops:preflight": "node scripts/ops/preflight.mjs",
+    "ops:secrets": "node scripts/ops/check-secrets-drift.mjs",
     "lint": "eslint . --ext .js,.jsx",
     "lint:fix": "eslint . --ext .js,.jsx --fix",
     "format": "prettier --write .",

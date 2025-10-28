@@ -11,7 +11,7 @@ Status field during weekly ops reviews.
 | --- | --- | --- | --- | --- |
 | OPS-ENV-001 | Not Started | Provision environment variables via a managed secrets store (Vault, AWS Secrets Manager, Doppler). | GitHub issue `OPS-ENV-001` | Blocks automated rollouts; requires Terraform module ownership defined in [ops runbook](../runbooks/diagnostics-cli.md). |
 | OPS-ENV-002 | Not Started | Define per-environment configuration overlays (dev/staging/prod) with LiveKit URLs, database DSNs, CDN buckets, and signing keys. | GitHub issue `OPS-ENV-002` | Config bundles should align with IaC layouts captured in [`docs/roadmap/hardening-plan.md`](../roadmap/hardening-plan.md). |
-| OPS-ENV-003 | In Progress | Introduce automated drift detection for secrets (Terraform state or rotation alerts). | GitHub issue `OPS-ENV-003` | Preflight automation (`scripts/ops/preflight.mjs`) now validates required secrets before deployment; integrate with observability alerts next. |
+| OPS-ENV-003 | Complete | Introduce automated drift detection for secrets (Terraform state or rotation alerts). | GitHub issue `OPS-ENV-003` | Secrets drift audit landed in `scripts/ops/check-secrets-drift.mjs` (`npm run ops:secrets`); wire results into observability next. |
 
 ## Objective OPS-O2 — Infrastructure Automation
 
@@ -79,7 +79,7 @@ This checklist captures the minimum hardening required to move a Hyperfy self-ho
 - [x] Provision environment variables through a managed secrets store (Vault, AWS Secrets Manager, Doppler) rather than `.env` files committed to hosts. Refer to `config/environments/*.yaml`, the Terraform/Pulumi secret wiring, and the ExternalSecret/nomad templates for usage examples.
 - [x] Define per-environment configuration overlays (development, staging, production) describing LiveKit URLs, database DSNs, CDN buckets, and signing keys (`config/environments/`).
 - [x] Run the automated deployment preflight (`npm run ops:preflight`) to validate required secrets, world assets, and worker thread readiness before a rollout (`scripts/ops/preflight.mjs`).
-- [ ] Introduce automated drift detection for secrets (e.g., Terraform state or secrets rotation alerts).
+- [x] Introduce automated drift detection for secrets (e.g., Terraform state or secrets rotation alerts) via `npm run ops:secrets`.
 
 ## 2. Infrastructure Automation
 - [x] Codify Fastify/Node services, LiveKit, databases, and asset/CDN storage in infrastructure-as-code (Terraform or Pulumi) with reproducible environments (`infrastructure/terraform`, `infrastructure/pulumi`).
