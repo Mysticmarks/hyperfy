@@ -33,5 +33,6 @@ pipeline should fail if any blocking failures are reported.
   migrations, CDN write access, or observability endpoints.
 - Export metrics from the preflight into your monitoring stack so repeated
   failures surface as alerts.
-- Pair the script with infrastructure drift detection (OPS-ENV-003) to close the
-  loop between pre-deployment validation and long-term secrets governance.
+- Pair the script with the automated secrets drift audit (`npm run ops:secrets`,
+  OPS-ENV-003) to close the loop between pre-deployment validation and long-term
+  secrets governance.
