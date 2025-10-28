@@ -173,7 +173,7 @@ function parseZoneConfig(rawValue, worldDir) {
   return zones
 }
 
-function buildServerConfig(options = {}) {
+export function createServerConfig(options = {}) {
   const rootDir = options.rootDir ? path.resolve(options.rootDir) : defaultRootDir
 
   const worldName = ensureRelativePath(readEnv('WORLD', { required: true }), 'WORLD')
@@ -287,7 +287,7 @@ function buildServerConfig(options = {}) {
   })
 }
 
-const serverConfig = buildServerConfig()
+const serverConfig = createServerConfig()
 
 export function getServerConfig() {
   return serverConfig
