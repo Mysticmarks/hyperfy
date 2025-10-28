@@ -7,6 +7,15 @@ import { importApp } from '../core/extras/appTools'
 import { defaults } from 'lodash-es'
 import { Ranks } from '../core/extras/ranks'
 
+async function findFirstExistingPath(paths, description) {
+  for (const candidate of paths) {
+    if (await fs.pathExists(candidate)) {
+      return candidate
+    }
+  }
+  throw new Error(`Unable to locate ${description}. Checked ${paths.join(', ')}`)
+}
+
 const connections = new Map()
 
 export async function getDB(worldDir, options = {}) {
@@ -317,7 +326,15 @@ const migrations = [
     // otherwise create the scene app from src/world/scene.hyp
     else {
       const rootDir = path.join(__dirname, '../')
-      const scenePath = path.join(rootDir, 'src/world/scene.hyp')
+      const scenePath = await findFirstExistingPath(
+        [
+          path.join(rootDir, 'src/world/scene.hyp'),
+          path.join(rootDir, 'world/scene.hyp'),
+          path.join(rootDir, '../src/world/scene.hyp'),
+          path.join(rootDir, '../world/scene.hyp'),
+        ],
+        'default scene blueprint'
+      )
       const buffer = await fs.readFile(scenePath)
       const file = new File([buffer], 'scene.hyp', {
         type: 'application/octet-stream',
