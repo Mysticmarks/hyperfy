@@ -29,17 +29,29 @@ function formatWorkerError(error, taskName) {
 export class TaskPool {
   constructor(options = {}) {
     const cpuCount = os.cpus()?.length ?? 1
-    const desiredSize = options.size ?? Math.max(1, Math.min(cpuCount - 1, 4))
-    this.size = Math.max(1, desiredSize)
+    const defaultSize = Math.max(1, Math.min(cpuCount - 1, 4))
+    const requestedSize = Math.max(1, options.size ?? defaultSize)
+    const minSize = Math.max(1, options.minSize ?? requestedSize)
+    const computedMax = options.maxSize ?? (options.size != null || options.minSize != null ? minSize : minSize)
+
+    this.minSize = minSize
+    this.maxSize = Math.max(this.minSize, computedMax)
     this.inlineFallback = options.inlineFallback ?? false
+    this.scaleThreshold = Math.max(1, options.scaleThreshold ?? 2)
+    this.idleTimeout = options.idleTimeout === 0 ? 0 : Math.max(0, options.idleTimeout ?? 30_000)
+    this.autoScale = this.maxSize > this.minSize
     this.idle = []
     this.queue = []
     this.pending = new Map()
     this.workers = new Set()
     this.destroyed = false
+    this.idleTimers = new Map()
+    this.stats = {
+      peakWorkers: 0,
+    }
 
     if (!this.inlineFallback) {
-      for (let index = 0; index < this.size; index++) {
+      for (let index = 0; index < this.minSize; index++) {
         this.#spawnWorker()
       }
     }
@@ -66,6 +78,7 @@ export class TaskPool {
   async destroy() {
     this.destroyed = true
     for (const worker of this.workers) {
+      this.#clearIdleTimer(worker)
       worker.removeAllListeners()
       await worker.terminate()
     }
@@ -76,9 +89,16 @@ export class TaskPool {
     }
     this.pending.clear()
     this.queue.length = 0
+    for (const timer of this.idleTimers.values()) {
+      clearTimeout(timer)
+    }
+    this.idleTimers.clear()
   }
 
   #spawnWorker() {
+    if (this.workers.size >= this.maxSize) {
+      return
+    }
     try {
       const worker = createWorker()
       worker.on('message', message => {
@@ -94,6 +114,7 @@ export class TaskPool {
       })
       this.workers.add(worker)
       this.idle.push(worker)
+      this.stats.peakWorkers = Math.max(this.stats.peakWorkers, this.workers.size)
       this.#drain()
     } catch (error) {
       this.inlineFallback = true
@@ -103,17 +124,22 @@ export class TaskPool {
 
   #drain() {
     if (this.inlineFallback) return
+    this.#maybeScale()
     while (this.queue.length > 0 && this.idle.length > 0) {
       const job = this.queue.shift()
       const worker = this.idle.pop()
       if (!worker) break
       job.worker = worker
       this.pending.set(job.id, job)
+      this.#clearIdleTimer(worker)
       worker.postMessage({
         id: job.id,
         taskName: job.taskName,
         payload: job.payload,
       })
+    }
+    if (this.queue.length > 0) {
+      this.#maybeScale()
     }
   }
 
@@ -128,6 +154,7 @@ export class TaskPool {
     this.pending.delete(message.id)
     if (!this.destroyed) {
       this.idle.push(worker)
+      this.#scheduleIdleReclaim(worker)
     }
     if (message.error) {
       job.reject(formatWorkerError(message.error, job.taskName))
@@ -139,6 +166,7 @@ export class TaskPool {
 
   #handleWorkerFailure(worker, error) {
     if (this.destroyed) return
+    this.#clearIdleTimer(worker)
     for (const [id, job] of this.pending.entries()) {
       if (job.worker === worker) {
         this.pending.delete(id)
@@ -159,5 +187,93 @@ export class TaskPool {
       console.warn('[TaskPool] Worker failure:', error)
     }
     this.#drain()
+  }
+
+  #maybeScale() {
+    if (!this.autoScale || this.inlineFallback) {
+      return
+    }
+    if (this.workers.size >= this.maxSize) {
+      return
+    }
+    if (this.queue.length === 0) {
+      return
+    }
+    if (this.idle.length > 0) {
+      return
+    }
+    const busyWorkers = Math.max(1, this.workers.size - this.idle.length)
+    const saturation = this.queue.length / busyWorkers
+    if (saturation >= this.scaleThreshold) {
+      this.#spawnWorker()
+    }
+  }
+
+  #scheduleIdleReclaim(worker) {
+    if (!this.autoScale || this.idleTimeout <= 0) {
+      return
+    }
+    if (this.destroyed) {
+      return
+    }
+    if (this.workers.size <= this.minSize) {
+      return
+    }
+    if (this.idleTimers.has(worker)) {
+      return
+    }
+    const timer = setTimeout(() => {
+      this.idleTimers.delete(worker)
+      void this.#retireWorker(worker)
+    }, this.idleTimeout)
+    if (typeof timer.unref === 'function') {
+      timer.unref()
+    }
+    this.idleTimers.set(worker, timer)
+  }
+
+  #clearIdleTimer(worker) {
+    const timer = this.idleTimers.get(worker)
+    if (timer) {
+      clearTimeout(timer)
+      this.idleTimers.delete(worker)
+    }
+  }
+
+  async #retireWorker(worker) {
+    if (this.destroyed) {
+      return
+    }
+    if (this.workers.size <= this.minSize) {
+      return
+    }
+    if (!this.workers.has(worker)) {
+      return
+    }
+    this.workers.delete(worker)
+    const index = this.idle.indexOf(worker)
+    if (index >= 0) {
+      this.idle.splice(index, 1)
+    }
+    worker.removeAllListeners()
+    try {
+      await worker.terminate()
+    } catch (error) {
+      console.warn('[TaskPool] Failed to retire worker:', error)
+    }
+    if (this.workers.size === 0) {
+      this.inlineFallback = true
+    }
+  }
+
+  metrics() {
+    return {
+      workers: this.workers.size,
+      idleWorkers: this.idle.length,
+      pendingJobs: this.queue.length,
+      inFlightJobs: this.pending.size,
+      peakWorkers: this.stats.peakWorkers,
+      inlineFallback: this.inlineFallback,
+    }
   }
 }
