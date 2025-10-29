@@ -117,6 +117,21 @@ node agent.mjs \
 - **[Twitter/X](https://x.com/hyperfy_io)** - Latest updates and announcements
 - **[Production Deployment Checklist](docs/deployment/checklist.md)** - Operational hardening requirements for self-hosting
 - **[Hardening Plan](docs/roadmap/hardening-plan.md)** - Milestones for deployment, testing, and UX upgrades
+- **[System Requirements Document](docs/system/system-requirements-document.md)** - Mission, architecture, and platform constraints
+- **[System Roadmap & Scope Register](docs/roadmap/system-roadmap.md)** - Subsystem maturity map and upcoming initiatives
+- **[Iteration Log](docs/iteration-log.md)** - Chronological record of autonomous improvement cycles
+
+## 🏗️ Architecture at a Glance
+
+Hyperfy is composed of modular subsystems that collaborate through Fastify HTTP/WebSocket services and a shared world runtime:
+
+- **Server Runtime (`src/server`)** — Fastify services, environment overlays, storage adapters, and LiveKit integration.
+- **World Simulation (`src/world`)** — Deterministic tick loop, physics pipelines, entity/component systems, and scripting sandboxing.
+- **Clients (`src/client`, `src/node-client`)** — Browser and Node runtimes built on React, Firebolt JSX, and Three.js.
+- **Tooling & Automation (`scripts`, `agent.mjs`)** — Build, diagnostics, deployment utilities, and programmable agents.
+- **Shared Core (`src/core`)** — SES lockdown, foundational utilities, and schemas shared across runtimes.
+
+See the [System Requirements Document](docs/system/system-requirements-document.md) for a full description of interfaces, dependencies, and success metrics.
 
 ## 📏 Project Structure
 
