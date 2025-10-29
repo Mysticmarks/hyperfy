@@ -10,6 +10,8 @@ const questDefinition = {
   ],
 }
 
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+
 describe('TaskPool', () => {
   it('executes quest simulation tasks across workers', async () => {
     const pool = new TaskPool({ size: 2 })
@@ -44,5 +46,27 @@ describe('TaskPool', () => {
     })
     expect(result.progress.collect.count).toBe(2)
     await inlinePool.destroy()
+  })
+
+  it('auto scales under sustained load and retires excess workers when idle', async () => {
+    const pool = new TaskPool({
+      minSize: 1,
+      maxSize: 3,
+      scaleThreshold: 1,
+      idleTimeout: 25,
+    })
+    const tasks = []
+    for (let index = 0; index < 6; index++) {
+      tasks.push(pool.run('diagnostics:delay', { durationMs: 30 }))
+    }
+    await Promise.all(tasks)
+    const peakAfterLoad = pool.metrics().peakWorkers
+    expect(peakAfterLoad).toBeGreaterThanOrEqual(2)
+    await wait(60)
+    const metrics = pool.metrics()
+    expect(metrics.workers).toBe(1)
+    expect(metrics.idleWorkers).toBeGreaterThanOrEqual(0)
+    expect(metrics.inlineFallback).toBe(false)
+    await pool.destroy()
   })
 })

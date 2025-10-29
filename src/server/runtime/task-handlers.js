@@ -103,9 +103,20 @@ async function aggregateMetrics(payload = {}) {
   }
 }
 
+async function delayDiagnostics(payload = {}) {
+  const duration = Math.max(0, Number(payload.durationMs ?? payload.duration ?? 0))
+  if (duration > 0) {
+    await new Promise(resolve => setTimeout(resolve, duration))
+  }
+  return {
+    waitedMs: duration,
+  }
+}
+
 export const taskHandlers = new Map([
   ['quest:simulate-progress', simulateQuest],
   ['metrics:aggregate-frames', aggregateMetrics],
+  ['diagnostics:delay', delayDiagnostics],
 ])
 
 export function hasTaskHandler(name) {
