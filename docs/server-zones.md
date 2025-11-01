@@ -10,8 +10,10 @@ state per zone while continuing to share the existing asset and collection pipel
 Set the `WORLD_ZONES` environment variable alongside the existing `WORLD` setting when
 booting the server. The value accepts either a JSON array or a comma-separated list.
 Each zone definition must include a unique `id`; optional fields provide a user-facing
-`label`, a relative `dataDir` for persistence, and a `tickRate` override (updates per
-second) that controls both simulation and networking frequency for that zone.
+`label`, a relative `dataDir` for persistence, a `tickRate` override (updates per
+second) that controls both simulation and networking frequency for that zone, and a
+`maxCatchUpTicks` budget that limits how many delayed frames are replayed when the
+server loop falls behind (defaults to `5`).
 
 ```bash
 # minimal comma-separated example
@@ -24,7 +26,7 @@ node src/server/index.js
 # JSON configuration with custom persistence folders and tick rates
 WORLD=my-world \
 WORLD_ZONES='[
-  {"id": "lobby", "label": "Public Lobby", "tickRate": 12},
+  {"id": "lobby", "label": "Public Lobby", "tickRate": 12, "maxCatchUpTicks": 4},
   {"id": "raid", "label": "Raid Instance", "dataDir": "zones/raid", "tickRate": 20}
 ]' \
 node src/server/index.js
@@ -50,8 +52,9 @@ player state:
 - `SERVER_NETWORK_THROTTLE_MS` enforces the minimum interval between updates about the
   same player to the same socket, preventing redundant packets (default: `50`).
 
-These knobs combine with each zone's `tickRate` to let operators balance simulation
-fidelity against bandwidth usage as populations grow.
+These knobs combine with each zone's `tickRate` and `maxCatchUpTicks` budget to let
+operators balance simulation fidelity against bandwidth usage as populations grow
+without letting backlog processing starve the current frame.
 
 ## Runtime Behaviour
 

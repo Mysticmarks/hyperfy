@@ -27,7 +27,8 @@ This roadmap captures the current maturity of Hyperfy subsystems, outstanding ri
    - Add startup health probes and server readiness checks.
    - Expand Vitest smoke tests to cover environment overlay loading failures.
 2. **Performance & Scalability (Q1-Q2)**
-   - Implement adaptive tick rate scheduling informed by server load metrics.
+  - Extend the adaptive tick scheduler with load-informed rate adjustments; backlog
+    guards now prevent runaway catch-up work.
    - Profile WebSocket throughput under 100 concurrent sessions.
    - Introduce caching for static asset manifests.
 3. **Developer Experience (Q2)**

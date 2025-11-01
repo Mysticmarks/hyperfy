@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - loader: opt-in instanced skinned mesh decoding guarded by `ENABLE_INSTANCED_SKINNING` for crowds authored with `EXT_mesh_gpu_instancing`【F:src/core/libs/gltfloader/GLTFLoader.js†L1700-L1823】【F:src/core/constants/featureFlags.js†L1-L18】
 
 ### Changed
+- core: server tick scheduler now compensates for drift with configurable catch-up
+  budgets per zone.【F:src/core/systems/Server.js†L1-L154】【F:src/server/config.js†L104-L150】
 
 ### Fixed
 - physics: release PhysX query buffers and refresh controller/collider filter data in place to prevent leaks during zone reloads and simplify collision debugging【F:src/core/systems/Physics.js†L300-L620】【F:src/core/nodes/Controller.js†L1-L213】【F:src/core/nodes/Collider.js†L1-L214】

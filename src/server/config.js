@@ -152,6 +152,7 @@ function parseZoneConfig(rawValue, worldDir) {
     const dataDir = path.join(worldDir, relativeDataDir)
 
     let tickRate = null
+    let maxCatchUpTicks = null
     if (zone.tickRate !== undefined && zone.tickRate !== null && zone.tickRate !== '') {
       const numeric = Number(zone.tickRate)
       if (!Number.isFinite(numeric) || numeric <= 0) {
@@ -160,12 +161,25 @@ function parseZoneConfig(rawValue, worldDir) {
       tickRate = numeric
     }
 
+    if (
+      zone.maxCatchUpTicks !== undefined &&
+      zone.maxCatchUpTicks !== null &&
+      zone.maxCatchUpTicks !== ''
+    ) {
+      const numeric = Number(zone.maxCatchUpTicks)
+      if (!Number.isFinite(numeric) || numeric < 0) {
+        throw new Error(`WORLD_ZONES[${index}].maxCatchUpTicks must be zero or a positive number if provided`)
+      }
+      maxCatchUpTicks = Math.floor(numeric)
+    }
+
     zones.push(
       Object.freeze({
         id,
         label,
         dataDir,
         tickRate,
+        maxCatchUpTicks,
       })
     )
   }
