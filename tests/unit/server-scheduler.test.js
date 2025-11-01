@@ -59,6 +59,28 @@ describe('Server scheduler', () => {
     expect(tick).toHaveBeenCalledTimes(1 + 1)
   })
 
+  it('accepts constructor tick rates when the world does not provide one', async () => {
+    const { Server } = await import('../../src/core/systems/Server.js')
+    const tick = vi.fn()
+    let now = 0
+    const server = new Server({ tick }, { timeProvider: () => now, tickRate: 10 })
+
+    expect(server.tickInterval).toBeCloseTo(1 / 10, 5)
+
+    server.start()
+
+    expect(server.tickInterval).toBeCloseTo(1 / 10, 5)
+    expect(tick).toHaveBeenCalledTimes(1)
+
+    const intervalMs = server.tickInterval * 1000
+    now += intervalMs
+    vi.advanceTimersToNextTimer()
+
+    expect(tick).toHaveBeenCalledTimes(2)
+
+    server.destroy()
+  })
+
   it('re-schedules ticks when the world changes the configured rate', async () => {
     const { Server } = await import('../../src/core/systems/Server.js')
     let now = 0

@@ -56,6 +56,15 @@ These knobs combine with each zone's `tickRate` and `maxCatchUpTicks` budget to 
 operators balance simulation fidelity against bandwidth usage as populations grow
 without letting backlog processing starve the current frame.
 
+### Programmatic overrides
+
+When embedding the server runtime for tooling or testing, you can instantiate the
+`Server` system directly and pass constructor options to tune the scheduler without
+environment variables. For example, `new Server(world, { tickRate: 20, maxCatchUpTicks: 2 })`
+keeps the simulation locked to 20 Hz unless a specific world overrides
+`world.serverTickRate` at runtime. This mirrors the per-zone configuration while
+keeping ad-hoc harnesses deterministic.
+
 ## Runtime Behaviour
 
 - Each zone receives a dedicated SQLite database and storage file inside its configured
