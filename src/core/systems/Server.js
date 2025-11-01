@@ -22,7 +22,12 @@ export class Server extends System {
     this.maxCatchUpTicks = Number.isInteger(options.maxCatchUpTicks) && options.maxCatchUpTicks >= 0
       ? options.maxCatchUpTicks
       : DEFAULT_MAX_CATCH_UP_TICKS
+    this.configuredTickRate =
+      typeof options.tickRate === 'number' && Number.isFinite(options.tickRate) && options.tickRate > 0
+        ? options.tickRate
+        : null
     this.timeProvider = typeof options.timeProvider === 'function' ? options.timeProvider : () => performance.now()
+    this.updateTickInterval()
   }
 
   start() {
@@ -100,6 +105,9 @@ export class Server extends System {
     const configured = this.world?.serverTickRate
     if (typeof configured === 'number' && Number.isFinite(configured) && configured > 0) {
       return configured
+    }
+    if (typeof this.configuredTickRate === 'number' && Number.isFinite(this.configuredTickRate) && this.configuredTickRate > 0) {
+      return this.configuredTickRate
     }
     return DEFAULT_TICKS_PER_SECOND
   }
