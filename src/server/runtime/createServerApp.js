@@ -89,6 +89,9 @@ export async function createServerApp({
       world.networkRate = 1 / zoneConfig.tickRate
       world.serverTickRate = zoneConfig.tickRate
     }
+    if (Number.isInteger(zoneConfig.maxCatchUpTicks) && zoneConfig.maxCatchUpTicks >= 0) {
+      world.serverMaxCatchUpTicks = zoneConfig.maxCatchUpTicks
+    }
     world.assetsUrl = publicConfig.assetsUrl
     world.collections.deserialize(cloneCollections(baseCollections))
     await world.init({ db, storage, assetsDir })
