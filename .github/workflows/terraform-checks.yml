@@ -1,0 +1,51 @@
+name: Terraform
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Fmt and validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.6
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Initialize (no backend)
+        run: terraform init -backend=false
+
+      - name: Validate configuration
+        run: >-
+          terraform validate -no-color
+          -var aws_region=us-east-1
+          -var project=hyperfy-ci
+          -var domain=example.com
+          -var api_certificate_arn=arn:aws:acm:us-east-1:111111111111:certificate/api
+          -var livekit_certificate_arn=arn:aws:acm:us-east-1:111111111111:certificate/livekit
+          -var sim_certificate_arn=arn:aws:acm:us-east-1:111111111111:certificate/sim
+          -var cdn_certificate_arn=arn:aws:acm:us-east-1:111111111111:certificate/cdn
+          -var fastify_image=ghcr.io/hyperfy-xyz/api:ci
+          -var fastify_desired_count=1
+          -var livekit_image=ghcr.io/hyperfy-xyz/livekit:ci
+          -var livekit_desired_count=1
+          -var sim_image=ghcr.io/hyperfy-xyz/sim:ci
+          -var sim_desired_count=1

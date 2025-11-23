@@ -47,3 +47,11 @@ After apply succeeds you will receive:
 
 Use the exported outputs to wire secrets into the Kubernetes/Nomad manifests or the
 GitHub Actions deployment workflows.
+
+## Continuous validation
+
+A GitHub Actions workflow (`.github/workflows/terraform-checks.yml`) keeps the stack
+fmt/validate clean on every push and PR. It runs `terraform fmt -check` and
+`terraform validate` with representative placeholder variables and without a
+remote backend to avoid credential requirements. Update the injected variables if
+new required inputs are added to the stack.
